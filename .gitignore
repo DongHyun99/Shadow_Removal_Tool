@@ -1,4 +1,5 @@
-data/
+/data
+venv/
 
 # Detection Models pth
 model/detection_models/MTMT/iter_10000.pth
@@ -9,4 +10,6 @@ model/detection_models/SynShadow/models/networks/base/resnext/resnext_101_32x4d.
 # Removal Models pth
 model/removal_models/
 
-venv/
+# __pycache__
+__pycache__/
+*.pyc
