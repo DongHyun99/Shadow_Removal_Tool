@@ -1,0 +1,12 @@
+data/
+
+# Detection Models pth
+model/detection_models/MTMT/iter_10000.pth
+model/detection_models/MTMT/resnext_101_32x4d.pth
+model/detection_models/SynShadow/checkpoints/latest_net_G.pth
+model/detection_models/SynShadow/models/networks/base/resnext/resnext_101_32x4d.pth
+
+# Removal Models pth
+model/removal_models/
+
+venv/

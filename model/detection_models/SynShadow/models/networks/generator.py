@@ -1,0 +1,3 @@
+from model.detection_models.SynShadow.models.networks.detection.zheng_cvpr2019_dsdnet import DSDGenerator
+from model.detection_models.SynShadow.models.networks.detection.zhu_eccv2018_bdrar import BDRARGenerator
+from model.detection_models.SynShadow.models.networks.removal.le_iccv2019_spmnet import SPMGenerator

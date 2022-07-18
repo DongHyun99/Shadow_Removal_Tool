@@ -1,0 +1,10 @@
+cython
+dill
+dominate
+imageio
+numpy
+opencv-python
+Pillow
+scipy==1.2.0
+tensorflow==1.13.1
+tqdm
