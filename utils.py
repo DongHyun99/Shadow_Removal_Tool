@@ -6,7 +6,7 @@ from PIL import ImageColor
 class Masking(QDialog) :
     def __init__(self) :
         super().__init__()
-        self.ui = uic.loadUi('Masking.ui', self)
+        self.ui = uic.loadUi('UI/Masking.ui', self)
         self.setWindowTitle('Masking Setting')
         self.maskCol = (255, 255, 180)
         self.segmentCol = (255, 180, 180)
@@ -111,7 +111,7 @@ class Masking(QDialog) :
 class Visualization(QDialog) :
     def __init__(self) :
         super().__init__()
-        self.ui = uic.loadUi('Visualization.ui', self)
+        self.ui = uic.loadUi('UI/Visualization.ui', self)
         self.setWindowTitle('Visualization Setting')
         
         self.shadowRemovalCheckbox.clicked.connect(self.shadowRemovalToggle)
@@ -152,5 +152,5 @@ class Visualization(QDialog) :
 class Server(QDialog) :
     def __init__(self) :
         super().__init__()
-        self.ui = uic.loadUi('Server.ui', self)
+        self.ui = uic.loadUi('UI/Server.ui', self)
         self.setWindowTitle('Server Setting')

@@ -10,7 +10,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 class ShadowRemovalPopup(QDialog):
     def __init__(self):
         super().__init__()
-        self.ui = uic.loadUi('ShadowRemovalPopup.ui', self)
+        self.ui = uic.loadUi('UI/ShadowRemovalPopup.ui', self)
         self.setWindowTitle('ShadowRemoval Popup')
         
         self.fig = plt.Figure()
@@ -26,7 +26,7 @@ class ShadowRemovalPopup(QDialog):
 class PredictPopup(QDialog):
     def __init__(self):
         super().__init__()
-        self.ui = uic.loadUi('PredictPopup.ui', self)
+        self.ui = uic.loadUi('UI/PredictPopup.ui', self)
         self.setWindowTitle('Predict Popup')
         
         self.fig = plt.Figure()
