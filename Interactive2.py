@@ -10,7 +10,7 @@ import json
 import base64
 import cv2
 import numpy as np
-from utils import Masking, Visualization
+from utils import Masking, Visualization, Server
 from Popup import ShadowRemovalPopup, PredictPopup
 
 
@@ -38,6 +38,7 @@ class Interact(QMainWindow) :
         self.shadowImageDir = 'None'
         self.maskImageDir= 'None'
         self.GTDir = 'None'
+        self.saveDir = 'None'
         self.shadowImage = None
         self.maskImage = None
         self.GTImage = None
@@ -76,6 +77,7 @@ class Interact(QMainWindow) :
         self.visualization = Visualization()
         self.ShadowRemovalPopup = ShadowRemovalPopup()
         self.predictPopup = PredictPopup()
+        self.server = Server()
         
         self.fig = plt.Figure()
         self.canvas = FigureCanvas(self.fig)
@@ -104,6 +106,7 @@ class Interact(QMainWindow) :
         self.actionBatch.triggered.connect(self.change_ui)
         self.actionMasking.triggered.connect(self.maskSetting_ui)
         self.actionVisualization.triggered.connect(self.visualization_ui)
+        self.actionServers.triggered.connect(self.server_ui)
         
     def selectDirectory(self):
         self.shadowImageButton.clicked.connect(self.selectShadow)
@@ -145,6 +148,8 @@ class Interact(QMainWindow) :
         self.Dilate.clicked.connect(self.dilateFunc)
         self.Erode.clicked.connect(self.erodeFunc)
         self.brushColorBtn.clicked.connect(self.brushColorFunc)
+        self.Save.clicked.connect(self.saveFunc)
+        self.Clear.clicked.connect(self.clearFunc)
  
     def radioButton(self):
         self.brush.clicked.connect(self.brushOrEraser)
@@ -198,7 +203,7 @@ class Interact(QMainWindow) :
         if self.GTDir != 'None' and self.GTDir != '':
             self.GTImage = cv2.imread(self.GTDir)
             self.GTImageName.setText(self.GTDir)
-        
+    
     def overlayToggle(self, state):
         mask = None
         predict = None
@@ -395,6 +400,7 @@ class Interact(QMainWindow) :
             self.maskOpacitySlider.show()
         
         self.fig2, self.ax2 = plt.subplots(figsize=(self.maskImage.shape[1]/100, self.maskImage.shape[0]/100)) # figsize = value * dpi(default 100)이므로
+        self.originalImage = {'image': [self.shadowImage, self.maskImage], 'imName': os.path.basename(self.shadowImageDir)}
         
         self.eventConnect()
         
@@ -408,8 +414,8 @@ class Interact(QMainWindow) :
             self.predictImage, self.inpaintImage, self.maskImage = self.shadowRemovalUpload(self.shadowImage, self.maskImage, self.maskSetting.dilateMaskCheckbox.isChecked())
             self.maskImage = cv2.cvtColor(self.maskImage, cv2.COLOR_RGB2GRAY)
             
-            # save
-            self.originalImage = {'shadowImage': self.shadowImage, 'maskImage': self.maskImage, 'inapaintImage': self.inpaintImage, 'predictImage': self.predictImage}
+            self.originalImage['image'].append(self.inpaintImage.copy())
+            self.originalImage['image'].append(self.predictImage.copy())
             
             if self.popupCheckbox:
                 # Popup Enabled
@@ -439,10 +445,17 @@ class Interact(QMainWindow) :
                     # Area In-Place & Edge Detection
                     self.num=2
                     maskEdge = self.extractMaskEdge(self.maskImage)
-                    self.predictImage, self.inpaintImage, mask = self.shadowRemovalUpload(self.shadowImage, maskEdge)
+                    
+                    self.originalImage['image'].append(maskEdge.copy())
+                    
+                    self.predictImage, self.inpaintImage, mask = self.shadowRemovalUpload(self.shadowImage, maskEdge, removalModel='Inpainting')
                     self.ax = self.setImageFunc(fig=self.fig, canvas=self.canvas, checkable=self.maskOverlayCheckbox.isChecked(), num=self.num, alpha = self.maskOpacitySlider.value(), inpainted=self.shadowImage, prediction=None, mask = self.maskImage)
                     self.ax = self.setImageFunc(fig = shadowRemovalFig, canvas=shadowRemovalCanvas, checkable=False, num=1, inpainted=self.inpaintImage, prediction=None, mask = None)
                     self.ax = self.setImageFunc(fig = predictFig, canvas = predictCanvas, checkable=False, num=1, inpainted = self.predictImage, prediction=None, mask=None)
+                    
+                    self.originalImage['image'].append(self.inpaintImage.copy())
+                    self.originalImage['image'].append(self.predictImage.copy())
+                    
                     self.predictImage =None
 
             else:
@@ -463,8 +476,14 @@ class Interact(QMainWindow) :
                     # Area In-Place & Edge Detection
                     self.num = 3
                     maskEdge = self.extractMaskEdge(self.maskImage)
-                    self.predictImage, self.inpaintImage, mask = self.shadowRemovalUpload(self.shadowImage, maskEdge)
+                    
+                    self.originalImage['image'].append(maskEdge.copy())
+                    
+                    self.predictImage, self.inpaintImage, mask = self.shadowRemovalUpload(self.shadowImage, maskEdge, removalModel='Inpainting')
                     self.ax = self.setImageFunc(fig=self.fig, canvas=self.canvas, checkable=self.maskOverlayCheckbox.isChecked(), num=self.num, alpha = self.maskOpacitySlider.value(), inpainted=self.shadowImage, prediction=self.predictImage, mask = self.maskImage)
+                    
+                    self.originalImage['image'].append(self.inpaintImage.copy())
+                    self.originalImage['image'].append(self.predictImage.copy())
             
             if self.popupCheckbox:
                 self.ShadowRemovalPopup.show()
@@ -477,6 +496,31 @@ class Interact(QMainWindow) :
         self.brushColorBtn.setStyleSheet(
             'background-color:{}; border:none; border-radius: 5px;'.format(self.brushColor)
         )
+        
+    def saveFunc(self):
+        
+        DirOpen = QFileDialog.getExistingDirectory(self, 'Select Directory', './')
+        self.saveDir = DirOpen
+         
+        if self.saveDir != 'None' and self.saveDir != '':
+            print('save dir: '+self.saveDir)
+            if self.originalImage !={}:
+                length = len(self.originalImage['image'])
+                if length >= 2:
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_original.png'), self.originalImage['image'][0])
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_mask.png'), self.originalImage['image'][1])
+                if length >= 4:
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_inapinted.png'), self.originalImage['image'][2])
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_predicted.png'), self.originalImage['image'][3])
+                if length >= 7:
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_maskEdge.png'), self.originalImage['image'][4])
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_edgeInapinted.png'), self.originalImage['image'][5])
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_edgePredicted.png'), self.originalImage['image'][6])
+    
+    def clearFunc(self):
+        self.Clear = Interact()
+        self.Clear.show()
+        self.close()
    
     def change_ui(self):
         from Batch import Batch
@@ -545,6 +589,14 @@ class Interact(QMainWindow) :
         self.predictAndInpaintingCheckbox = self.visualization.predictAndInpaintingCheckbox.isChecked()
         self.edgeDetectionCheckbox = self.visualization.edgeDetectionCheckbox.isChecked()
         
+    def server_ui(self):
+        self.server.serverEdit.setText(self.ip[7:-1])
+        self.server.exec_()
+        self.ip = 'http://' + self.server.serverEdit.text() + '/'
+        
+        print(self.ip)
+                
+
     def extractMaskEdge(self, mask):    # mask [:,:, 1]
         #mask_double =np.asarry(mask, dtype=np.double)
         gx, gy = np.gradient(mask)
@@ -566,57 +618,61 @@ class Interact(QMainWindow) :
         return np.array(fig.canvas.renderer._renderer)
 
         
-    def shadowRemovalUpload(self, shadow, mask, dilate = False):
-            print('removalModel: {}\nshadowImage:{}\nmaskImage:{}'.format(self.selectRemovalModel.currentText(), self.shadowImageDir, self.maskImageDir))
-            # 이미지 base64 인코딩 
-            shadowImage = base64.b64encode(cv2.imencode('.png', shadow)[1]).decode()
-            maskImage = base64.b64encode(cv2.imencode('.png', mask)[1]).decode()
-            GTImage = 'None'
-            dilateValue = 'None'
+    def shadowRemovalUpload(self, shadow, mask, dilate = False, removalModel = None):
+        
+        if removalModel == None:
+            removalModel = self.selectRemovalModel.currentText()
+        
+        print('removalModel: {}\nshadowImage:{}\nmaskImage:{}'.format(removalModel, self.shadowImageDir, self.maskImageDir))
+        # 이미지 base64 인코딩 
+        shadowImage = base64.b64encode(cv2.imencode('.png', shadow)[1]).decode()
+        maskImage = base64.b64encode(cv2.imencode('.png', mask)[1]).decode()
+        GTImage = 'None'
+        dilateValue = 'None'
+        
+        if dilate:
+            dilateValue = self.maskSetting.dilateValueSlider.value()
+            print('Dilate Mask')
             
-            if dilate:
-                dilateValue = self.maskSetting.dilateValueSlider.value()
-                print('Dilate Mask')
+        if self.GTImageCheckbox.isChecked():
+            GTImage = base64.b64encode(cv2.imencode('.png', self.GTImage)[1]).decode()
+        
+        
+        upload = {'mode': 'Interactive', 'removal': True, 'detection': False, 'perf': self.GTImageCheckbox.isChecked(),
+                  'removalModel': removalModel, 'detectionModel': self.selectDetectionModel.currentText(), 
+                  'shadowImage': shadowImage, 'maskImage': maskImage, 'GTImage': GTImage, 'dilateValue': dilateValue}
+        
+        # predict requests
+        res = requests.post(self.ip + 'predict', data=upload)
+        res = json.loads(res.json())
+        img_predicted = res['predictImage']
+        img_inpainted = res['inpaintingImage']
+        img_mask = res['maskImage']
+        perf = res['perf']
+        
+        # 예측 값 디코딩
+        img_predicted = cv2.imdecode(np.frombuffer(base64.b64decode(img_predicted), dtype=np.uint8), flags=1)
+        img_inpainted = cv2.imdecode(np.frombuffer(base64.b64decode(img_inpainted), dtype=np.uint8), flags=1)
+        img_mask = cv2.imdecode(np.frombuffer(base64.b64decode(img_mask), dtype=np.uint8), flags=1)
+        
+        # RMSE update
+        if perf != 'None' and perf != None:
+            print(perf)
+            if self.shadowRemovalCheckbox:
+                value = 'RMSE: {}, RMSE-Shadow: {}, RMSE-nonShadow: {}'.format(round(perf['inpainted']['RMSE'],3), round(perf['inpainted']['RMSE-S'],3), round(perf['inpainted']['RMSE-N'],3))
+            else: 
+                value = 'inpainted: [RMSE: {}, RMSE-Shadow: {}, RMSE-nonShadow: {}] / predicted: [RMSE: {}, RMSE-Shadow: {}, RMSE-nonShadow: {}]'.format(
+                    round(perf['inpainted']['RMSE'],3), round(perf['inpainted']['RMSE-S'],3), round(perf['inpainted']['RMSE-N'],3),
+                    round(perf['predicted']['RMSE'],3), round(perf['predicted']['RMSE-S'],3), round(perf['predicted']['RMSE-N'],3)
+                )
                 
-            if self.GTImageCheckbox.isChecked():
-                GTImage = base64.b64encode(cv2.imencode('.png', self.GTImage)[1]).decode()
-            
-            
-            upload = {'mode': 'Interactive', 'removal': True, 'detection': False, 'perf': self.GTImageCheckbox.isChecked(),
-                      'removalModel': self.selectRemovalModel.currentText(), 'detectionModel': self.selectDetectionModel.currentText(), 
-                      'shadowImage': shadowImage, 'maskImage': maskImage, 'GTImage': GTImage, 'dilateValue': dilateValue}
-            
-            # predict requests
-            res = requests.post(self.ip + 'predict', data=upload)
-            res = json.loads(res.json())
-            img_predicted = res['predictImage']
-            img_inpainted = res['inpaintingImage']
-            img_mask = res['maskImage']
-            perf = res['perf']
-            
-            # 예측 값 디코딩
-            img_predicted = cv2.imdecode(np.frombuffer(base64.b64decode(img_predicted), dtype=np.uint8), flags=1)
-            img_inpainted = cv2.imdecode(np.frombuffer(base64.b64decode(img_inpainted), dtype=np.uint8), flags=1)
-            img_mask = cv2.imdecode(np.frombuffer(base64.b64decode(img_mask), dtype=np.uint8), flags=1)
-            
-            # RMSE update
-            if perf != 'None':
-                print('perf: ', perf)
-                if self.shadowRemovalCheckbox:
-                    value = 'RMSE: {}, RMSE-Shadow: {}, RMSE-nonShadow: {}'.format(round(perf['inpainted']['RMSE'],3), round(perf['inpainted']['RMSE-S'],3), round(perf['inpainted']['RMSE-N'],3))
-                else: 
-                    value = 'inpainted: [RMSE: {}, RMSE-Shadow: {}, RMSE-nonShadow: {}] / predicted: [RMSE: {}, RMSE-Shadow: {}, RMSE-nonShadow: {}]'.format(
-                        round(perf['inpainted']['RMSE'],3), round(perf['inpainted']['RMSE-S'],3), round(perf['inpainted']['RMSE-N'],3),
-                        round(perf['predicted']['RMSE'],3), round(perf['predicted']['RMSE-S'],3), round(perf['predicted']['RMSE-N'],3)
-                    )
-                    
-                self.perf.setText(value)
-                font = self.perf.font()
-                font.setBold(True)
-                self.perf.setFont(font)
-                self.perf.setAlignment(Qt.AlignCenter)
-            
-            return img_predicted, img_inpainted, img_mask      
+            self.perf.setText(value)
+            font = self.perf.font()
+            font.setBold(True)
+            self.perf.setFont(font)
+            self.perf.setAlignment(Qt.AlignCenter)
+        
+        return img_predicted, img_inpainted, img_mask      
     
     def onMousePress(self, event):
         x1 = event.xdata + 0.5

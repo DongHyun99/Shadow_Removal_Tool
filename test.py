@@ -1,6 +1,11 @@
 import cv2
 import numpy as np
+import os
 
+dat = os.path.join('data', 'drone_patch', '01_DSC02247.jpg')
+print(os.path.basename(dat[:-4]))
+
+'''
 def ceil_modulo(x, mod):
     if x % mod == 0:
         return x
@@ -23,3 +28,4 @@ cv2.imwrite('name2.png', mask)
 
 name = 'data/ISTD/mask/90-1.png'
 print(name[:-4]+'_mask'+'.png')
+'''

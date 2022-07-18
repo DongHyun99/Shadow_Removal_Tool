@@ -35,7 +35,7 @@
        <x>460</x>
        <y>20</y>
        <width>161</width>
-       <height>131</height>
+       <height>91</height>
       </rect>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
@@ -77,25 +77,6 @@
         </property>
        </widget>
       </item>
-      <item>
-       <widget class="QLabel" name="label_3">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>30</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>30</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:12pt;&quot;&gt;▌Result Images&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-      </item>
      </layout>
     </widget>
     <widget class="QWidget" name="verticalLayoutWidget_2">
@@ -104,7 +85,7 @@
        <x>630</x>
        <y>20</y>
        <width>271</width>
-       <height>131</height>
+       <height>91</height>
       </rect>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -152,28 +133,6 @@
         </property>
        </widget>
       </item>
-      <item>
-       <widget class="QLabel" name="resultImageName">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>30</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>30</height>
-         </size>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">background-color: rgb(221, 221, 221)</string>
-        </property>
-        <property name="text">
-         <string>None</string>
-        </property>
-       </widget>
-      </item>
      </layout>
     </widget>
     <widget class="QWidget" name="verticalLayoutWidget_3">
@@ -182,7 +141,7 @@
        <x>910</x>
        <y>20</y>
        <width>82</width>
-       <height>131</height>
+       <height>91</height>
       </rect>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -201,19 +160,6 @@
       </item>
       <item>
        <widget class="QPushButton" name="maskImageButton">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>26</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Search</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="resultImageButton">
         <property name="minimumSize">
          <size>
           <width>0</width>
@@ -1026,7 +972,7 @@ border-radius: 5px;</string>
     <property name="title">
      <string>Options</string>
     </property>
-    <addaction name="actionSErvers"/>
+    <addaction name="actionServers"/>
     <addaction name="actionMasking"/>
     <addaction name="actionVisualization"/>
    </widget>
@@ -1044,7 +990,7 @@ border-radius: 5px;</string>
     <string>Batch</string>
    </property>
   </action>
-  <action name="actionSErvers">
+  <action name="actionServers">
    <property name="text">
     <string>Servers</string>
    </property>

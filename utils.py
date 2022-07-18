@@ -148,3 +148,9 @@ class Visualization(QDialog) :
         
         elif not self.shadowRemovalCheckbox.isChecked() and not self.predictAndInpaintingCheckbox.isChecked():
             self.shadowRemovalCheckbox.toggle()
+            
+class Server(QDialog) :
+    def __init__(self) :
+        super().__init__()
+        self.ui = uic.loadUi('Server.ui', self)
+        self.setWindowTitle('Server Setting')
