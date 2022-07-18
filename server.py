@@ -10,6 +10,7 @@ import numpy as np
 from distutils import util
 import glob
 import argparse
+import shutil
 
 from detection import MTMT, MTMT_patch, SynShadow
 from utils import pad_img_to_modulo
@@ -26,6 +27,13 @@ app = Flask(__name__)
 
 @app.route('/modelList', methods=['GET'])
 def model_list():
+    
+    # client가 새로 접속하면 (Tool을 시작하면) 이전에 사용했던 데이터 디렉토리 삭제
+    ipData = os.path.join('data', request.remote_addr)
+    if os.path.isdir(ipData):
+        shutil.rmtree(ipData)
+    
+    # detection_model과 removal_model의 list를 json 형태로 response
     detection_model = list(filter(os.path.isdir,glob.glob('model/detection_models/*')))
     detection_model = list(map(lambda m : m.split('/')[-1], detection_model))
     
@@ -39,6 +47,7 @@ def model_list():
 @app.route('/predict', methods=['POST'])
 def prediction():
     
+    # 각 ip별 디렉토리 할당
     shadow_dir = os.path.join('data', request.remote_addr, 'shadow')
     mask_dir = os.path.join('data', request.remote_addr, 'mask')
     inpainted_dir = os.path.join('data', request.remote_addr, 'result', 'inpainted')
@@ -56,6 +65,7 @@ def prediction():
     removal_model_dir = 'model/removal_models/'
     detection_model_dir = 'model/detection_models/'
     
+    # detection이나 removal에 대한 request를 받아옴
     mode = request.form['mode']
     removal = util.strtobool(request.form['removal'])
     detection = util.strtobool(request.form['detection'])
@@ -69,6 +79,7 @@ def prediction():
     
     predictImage, inpaintingImage, perfValue = None, None, None
     
+    # Batch Mode
     if mode == 'Batch':
         if detection:
             pass
@@ -120,19 +131,26 @@ def prediction():
             
         return 'complete'
     
+    # Interactive Mode
     elif mode == 'Interactive':
+        
+        # detection method
         if detection:
             shadowImage = cv2.imdecode(np.frombuffer(base64.b64decode(shadowImage), dtype=np.uint8), flags=1)
             cv2.imwrite(os.path.join(shadow_dir, 'sample.png'), shadowImage)
             
             if detectionModel == 'MTMT':
                 print('MTMT')
-                maskImage = MTMT(detection_model_dir, detectionModel, shadow_dir, mask_dir)
-                maskImage = np.array(np.where(maskImage > 10, 255, 0), np.uint8)
-                cv2.imwrite(os.path.join(mask_dir, 'sample.png'), maskImage)
+                maskImages = MTMT(detection_model_dir, detectionModel, shadow_dir, mask_dir)
+                for maskImage in maskImages:
+                    maskImage = np.array(np.where(maskImage > 10, 255, 0), np.uint8)
+                    cv2.imwrite(os.path.join(mask_dir, 'sample.png'), maskImage)
             
             if detectionModel == 'MTMT_patch':
                 print('MTMT_patch')
+                maskImage = MTMT_patch(detection_model_dir, 'MTMT', shadow_dir, mask_dir, shadowImage.shape[1], shadowImage.shape[0])
+                maskImage = np.array(np.where(maskImage > 10, 255, 0), np.uint8)
+                cv2.imwrite(os.path.join(mask_dir, 'sample.png'), maskImage)
                 
             if detectionModel == 'SynShadow':
                 print('SynShadow')
@@ -141,6 +159,7 @@ def prediction():
                 maskImage = cv2.resize(maskImage, (shadowImage.shape[1], shadowImage.shape[0]), interpolation=cv2.INTER_LANCZOS4)
                 cv2.imwrite(os.path.join(mask_dir, 'sample.png'), maskImage)
         
+        # detection이 아닐경우 mask를 받아옴
         else:
             maskImage = cv2.imdecode(np.frombuffer(base64.b64decode(maskImage), dtype=np.uint8), flags=1)
             cv2.imwrite(os.path.join(mask_dir, 'sample.png'), maskImage)
@@ -153,7 +172,8 @@ def prediction():
             mask = np.expand_dims(mask, 0)
             mask = mask.astype('float32') / 255
             mask = pad_img_to_modulo(mask, 8)
-    
+
+        # removal method
         if removal:
             shadowImage = cv2.imdecode(np.frombuffer(base64.b64decode(shadowImage), dtype=np.uint8), flags=1)
             cv2.imwrite(os.path.join(shadow_dir, 'sample.png'), shadowImage)
@@ -188,6 +208,7 @@ def prediction():
             inpaintingImage = base64.b64encode(cv2.imencode('.png', img_inpainted)[1]).decode()
             predictImage = base64.b64encode(cv2.imencode('.png', img_predicted)[1]).decode()
             
+            # perf가 True일 경우 RMSE performance를 계산하여 같이 반환
             if perf:
                 print('RMSE calculate')
                 GTImage = cv2.imdecode(np.frombuffer(base64.b64decode(GTImage), dtype=np.uint8), flags=1)

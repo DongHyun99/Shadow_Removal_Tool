@@ -22,6 +22,7 @@ def MTMT(model_path, model_name, img_path ='data/shadow/', save_path='data/mask/
     data_path = [(os.path.join(image_path, img_name + '.png'),
              os.path.join(image_path, img_name + '.png'))
             for img_name in img_list]
+    
     net = build_model('resnext101').cuda()
     net.load_state_dict(torch.load(snapshot_path))
     net.eval()
@@ -35,6 +36,9 @@ def test_all_case(net, image_list, num_classes=1, save_result=True, test_save_pa
     normal = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) # SBU
     # normal = transforms.Normalize([0.517, 0.514, 0.492], [0.186, 0.173, 0.181]) # ISTD
     # normal = transforms.Normalize([0.723, 0.616, 0.569], [0.169, 0.177, 0.197]) # ISIC2017
+    
+    predictions = []
+    
     img_transform = transforms.Compose([
         transforms.Resize((trans_scale, trans_scale)),
         transforms.ToTensor(),
@@ -63,21 +67,51 @@ def test_all_case(net, image_list, num_classes=1, save_result=True, test_save_pa
         # prediction = np.uint8(prediction>=90)*255 # trick just for SBU
         prediction = crf_refine(np.array(img.convert('RGB').resize((trans_scale, trans_scale))), prediction)
         prediction = np.array(transforms.Resize((h, w))(Image.fromarray(prediction.astype('uint8')).convert('L')))
+        predictions.append(prediction)
         
         # if save_result:
             # Image.fromarray(prediction).save(os.path.join(test_save_path, img_name[:-4]+'.png'), "PNG")
 
-    return prediction
+    return predictions
 
 from model.detection_models.MTMT_patch.crop import crop
 from model.detection_models.MTMT_patch.merge import merge
+import glob
+import cv2
 
 def MTMT_patch(model_path, model_name, img_path, save_path, 
                img_x_size, img_y_size, patch_x_size=640, patch_y_size=480, stride=0):
     
-    crop(img_x_size, img_y_size, img_path, patch_x_size=640, patch_y_size=480, stride=0)
-    maskImages = MTMT(model_path, model_name, img_path, save_path)
-    merge(img_x_size, img_y_size, img_path, save_path, patch_x_size, patch_y_size, stride)
+    
+    shadowPatchPath = os.path.join(img_path, 'patch')
+    maskPatchPath = os.path.join(save_path, 'patch')
+    
+    os.makedirs(shadowPatchPath, exist_ok=True)
+    os.makedirs(maskPatchPath, exist_ok=True)
+    
+    crop(img_x_size, img_y_size, img_path, patch_x_size, patch_y_size, stride)
+    
+    snapshot_path = os.path.join(model_path, model_name, 'iter_10000.pth')
+    image_path = img_path
+    num_classes = 1
+    scale = 416
+    img_list = glob.glob(shadowPatchPath+'/*.png')
+    data_path = [(img_name, img_name) for img_name in img_list]
+    net = build_model('resnext101').cuda()
+    net.load_state_dict(torch.load(snapshot_path))
+    net.eval()
+    maskImages = test_all_case(net, data_path, num_classes=num_classes,
+                               save_result=True, test_save_path=save_path, trans_scale=scale)
+    
+    for mask, imname in zip(maskImages, img_list):
+        imname = imname.replace(shadowPatchPath+'/', '')
+        print(os.path.join(maskPatchPath, imname))
+        mask = np.array(np.where(mask > 10, 255, 0), np.uint8)
+        cv2.imwrite(os.path.join(maskPatchPath, imname), mask)
+    
+    maskImages = merge(img_x_size, img_y_size, img_path, save_path, patch_x_size, patch_y_size, stride)
+    
+    return maskImages
 
 from model.detection_models.SynShadow.options.test_options import TestOptions
 from model.detection_models.SynShadow.models.detect_model import DetectModel
