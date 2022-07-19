@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 
+'''
 img_path = os.path.join('result', '01_DSC02276_predicted.png')
 mask_path = os.path.join('result', '01_DSC02276_mask.png')
 
@@ -31,3 +32,8 @@ img = mask * cont_dst + (1 - mask) * src
 
 cv2.imwrite('test.png', img)
 cv2.imwrite('cont.png', cont_dst)
+'''
+
+img = cv2.imread(os.path.join('data', 'dron_patch', '01_DSC02088_mask.png'), cv2.IMREAD_GRAYSCALE)
+img = np.array(np.where(img > 10, 255, 0), np.uint8)
+cv2.imwrite('img.png', img)
