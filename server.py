@@ -53,14 +53,12 @@ def prediction():
     inpainted_dir = os.path.join('data', request.remote_addr, 'result', 'inpainted')
     predicted_dir = os.path.join('data', request.remote_addr, 'result', 'predicted')
     GT_dir = os.path.join('data', request.remote_addr, 'GT')
-    data_dir = os.path.join('data', request.remote_addr, 'data')
     
     os.makedirs(shadow_dir, exist_ok=True)
     os.makedirs(mask_dir, exist_ok=True)
     os.makedirs(inpainted_dir, exist_ok=True)
     os.makedirs(predicted_dir, exist_ok=True)
     os.makedirs(GT_dir, exist_ok=True)
-    os.makedirs(data_dir, exist_ok=True)
     
     removal_model_dir = 'model/removal_models/'
     detection_model_dir = 'model/detection_models/'
@@ -82,32 +80,6 @@ def prediction():
     # Batch Mode
     if mode == 'Batch':
         if detection:
-            pass
-        
-        else:
-            maskImageZip = base64.b64decode(maskImage)
-            
-            with open(os.path.join('data',request.remote_addr,'mask.zip'), 'wb') as f:
-                f.write(maskImageZip)
-            
-            maskImageZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'mask.zip'))
-            
-            for file in maskImageZip.namelist():
-                maskImageZip.extract(file, mask_dir)
-                
-            maskImage = glob.glob(mask_dir+'/*.png')
-            
-            for mask in maskImage:
-                maskim = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
-                
-                # dilate 값이 있는 경우 mask를 수정해줌
-                if dilateValue != 'None':
-                    kernel = np.ones((3,3), np.uint8)
-                    maskim = cv2.dilate(maskim, kernel, int(dilateValue))
-                cv2.imwrite(os.path.join(data_dir, mask[:-4].split('/')[-1]+'_mask'+'.png'), maskim)
-                
-        if removal:
-            
             shadowImageZip = base64.b64decode(shadowImage)
             
             with open(os.path.join('data',request.remote_addr,'shadow.zip'), 'wb') as f:
@@ -118,18 +90,94 @@ def prediction():
             for file in shadowImageZip.namelist():
                 shadowImageZip.extract(file, shadow_dir)
                 
-            shadowImage = glob.glob(shadow_dir+ '/*.png')
+            shadowImages = os.listdir(shadow_dir)
             
-            for shadow in shadowImage:
-                shadowim = cv2.imread(shadow)
-                #shadowim = cv2.cvtColor(shadowim, cv2.COLOR_RGB2BGR)
-                print(os.path.join(data_dir, shadow.split('/')[-1]))
-                cv2.imwrite(os.path.join(data_dir, shadow.split('/')[-1]), shadowim)
+            if detectionModel == 'MTMT':
+                print('MTMT')
+                maskImages = MTMT(detection_model_dir, detectionModel, shadow_dir, mask_dir)
+                for maskIm, shadow in zip(maskImages, shadowImages):
+                    maskIm = np.array(np.where(maskIm > 10, 255, 0), np.uint8)
+                    cv2.imwrite(os.path.join(mask_dir, shadow.replace('/shadow/', '/mask/')), maskImage)
+        
+        else:
+            shadowImageZip = base64.b64decode(shadowImage)
+            
+            with open(os.path.join('data',request.remote_addr,'shadow.zip'), 'wb') as f:
+                f.write(shadowImageZip)
+            
+            shadowImageZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'shadow.zip'))
+            
+            for file in shadowImageZip.namelist():
+                shadowImageZip.extract(file, shadow_dir)
+            
+            maskImageZip = base64.b64decode(maskImage)
+            
+            with open(os.path.join('data',request.remote_addr,'mask.zip'), 'wb') as f:
+                f.write(maskImageZip)
+            
+            maskImageZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'mask.zip'))
+            
+            for file in maskImageZip.namelist():
+                maskImageZip.extract(file, mask_dir)
                 
-            path = os.path.join(removal_model_dir, removalModel)
-            predictWithDir(data_dir, None, path, False, '.png', opt)
+            maskImages = glob.glob(mask_dir+'/*.png')
             
-        return 'complete'
+            if dilateValue != 'None':
+                for mask in maskImages:
+                    maskim = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
+                
+                    # dilate 값이 있는 경우 mask를 수정해줌
+                
+                    kernel = np.ones((3,3), np.uint8)
+                    maskim = cv2.dilate(maskim, kernel, int(dilateValue))
+                    cv2.imwrite(mask, maskim)
+                
+        if removal:
+            path = os.path.join(removal_model_dir, removalModel)
+            add_dir = os.path.join('data', request.remote_addr)
+            predictWithDir(add_dir, None, path, False, '.png', opt)
+            
+        dir = os.getcwd()
+        
+        # mask
+        maskList = os.listdir(mask_dir)
+        os.chdir(mask_dir)
+        maskZip = zipfile.ZipFile(os.path.join(dir, 'data', request.remote_addr, 'mask.zip'), 'w')
+        for mask in maskList:
+            maskZip.write(mask)
+        maskZip.close()    
+        os.chdir(dir)
+        with open(os.path.join(dir, 'data', request.remote_addr, 'mask.zip'), "rb") as f:
+            bytes = f.read()
+            maskZip = base64.b64encode(bytes)
+            
+        #predict
+        predictList = os.listdir(predicted_dir)
+        os.chdir(predicted_dir)
+        predictZip = zipfile.ZipFile(os.path.join(dir, 'data', request.remote_addr, 'predicted.zip'), 'w')
+        for pred in predictList:
+            predictZip.write(pred)
+        predictZip.close()    
+        os.chdir(dir)
+        with open(os.path.join(dir, 'data', request.remote_addr, 'predicted.zip'), "rb") as f:
+            bytes = f.read()
+            predictZip = base64.b64encode(bytes)
+            
+        #predict
+        inpaintList = os.listdir(inpainted_dir)
+        os.chdir(inpainted_dir)
+        inpaintZip = zipfile.ZipFile(os.path.join(dir, 'data', request.remote_addr, 'inpainted.zip'), 'w')
+        for inp in inpaintList:
+            inpaintZip.write(inp)
+        inpaintZip.close()    
+        os.chdir(dir)
+        with open(os.path.join(dir, 'data', request.remote_addr, 'inpainted.zip'), "rb") as f:
+            bytes = f.read()
+            inpaintZip = base64.b64encode(bytes)
+            
+        response = {'predictImage': predictZip, 'inpaintingImage': inpaintZip, 'maskImage': maskZip, 'perf': perfValue}
+        js = json.dumps(response, indent=4)
+        return jsonify(js)
     
     # Interactive Mode
     elif mode == 'Interactive':
