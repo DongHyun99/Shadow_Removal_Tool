@@ -79,6 +79,7 @@ class Interact(QMainWindow) :
         self.predictPopup = PredictPopup()
         self.server = Server()
         
+        # matplotlib Setting
         self.fig = plt.Figure()
         self.canvas = FigureCanvas(self.fig)
         self.fig.tight_layout()
@@ -156,6 +157,7 @@ class Interact(QMainWindow) :
         self.eraser.clicked.connect(self.brushOrEraser)
         
     def loadModels(self):
+        # Recall model list
         res = requests.get(self.ip + 'modelList')
         models = json.loads(res.json())
         
@@ -179,7 +181,8 @@ class Interact(QMainWindow) :
     # ===================================================================
 
     def selectShadow(self):
-        FileOpen = QFileDialog.getOpenFileName(self, 'Open file', './')
+        # shadow 이미지 선택시
+        FileOpen = QFileDialog.getOpenFileName(self, 'Open shadowImage file', './')
         self.shadowImageDir = FileOpen[0]
         
         if self.shadowImageDir != 'None' and self.shadowImageDir != '':
@@ -189,7 +192,8 @@ class Interact(QMainWindow) :
             self.shadowImageName.setText(self.shadowImageDir)
         
     def selectMask(self):
-        FileOpen = QFileDialog.getOpenFileName(self, 'Open file', './')
+        # mask 이미지 선택시
+        FileOpen = QFileDialog.getOpenFileName(self, 'Open maskImage file', './')
         self.maskImageDir = FileOpen[0]
         
         if self.maskImageDir != 'None' and self.maskImageDir != '':
@@ -197,7 +201,8 @@ class Interact(QMainWindow) :
             self.maskImageName.setText(self.maskImageDir)
     
     def selectGT(self):
-        FileOpen = QFileDialog.getOpenFileName(self, 'Open file', './')
+        # GT 이미지 선택시
+        FileOpen = QFileDialog.getOpenFileName(self, 'Open GTImage file', './')
         self.GTDir = FileOpen[0]
         
         if self.GTDir != 'None' and self.GTDir != '':
@@ -205,6 +210,7 @@ class Interact(QMainWindow) :
             self.GTImageName.setText(self.GTDir)
     
     def overlayToggle(self, state):
+        # overlay checkbox를 toggle 시 작동, maskRetriev 동작전에는 실행할 수 없음
         mask = None
         predict = None
         inpainted = self.shadowImage
@@ -221,6 +227,8 @@ class Interact(QMainWindow) :
         self.ax = self.setImageFunc(fig=self.fig, canvas=self.canvas, checkable=self.maskOverlayCheckbox.isChecked(), num=self.num, alpha = self.maskOpacitySlider.value(), inpainted=inpainted, prediction=predict, mask = mask)
             
     def maskImageToggle(self):
+        # mask를 이미 가지고 있는 이미지를 사용할지, Detection model을 사용할 지 선택
+        # Masking mode 시 둘다 선택하지 않아도 사용 가능
         if self.maskImageCheckbox.isChecked():
             if self.detectionModelCheckbox.isChecked():
                 self.detectionModelCheckbox.toggle()
@@ -230,6 +238,8 @@ class Interact(QMainWindow) :
                     self.detectionModelCheckbox.toggle()
             
     def detectionModelToggle(self):
+        # mask를 이미 가지고 있는 이미지를 사용할지, Detection model을 사용할 지 선택
+        # Masking mode 시 둘다 선택하지 않아도 사용 가능
         if self.detectionModelCheckbox.isChecked():
             if self.maskImageCheckbox.isChecked():
                 self.maskImageCheckbox.toggle()
@@ -239,6 +249,7 @@ class Interact(QMainWindow) :
                     self.maskImageCheckbox.toggle()
     
     def overlayOpacity(self):
+        # overlay의 투명도를 변경 할 때 동작
         mask = None
         predict = None
         inpainted = self.shadowImage
@@ -249,9 +260,11 @@ class Interact(QMainWindow) :
         self.ax = self.setImageFunc(fig=self.fig, canvas=self.canvas, checkable=self.maskOverlayCheckbox.isChecked(), num=self.num, alpha = self.maskOpacitySlider.value(), inpainted=inpainted, prediction=predict, mask = mask)
  
     def brushSizeChanged(self):
+        # brush 크기가 달라지면 동작
         self.line, = self.ax.plot(self.xdata, self.ydata, linewidth=self.brushSizeSlider.value(), color=self.brushColor)  
         
     def brushOrEraser(self):
+        # Eraser와 Brush 선택
         if self.brush.isChecked():
             self.pen = 'brush'
         if self.eraser.isChecked():
@@ -260,6 +273,7 @@ class Interact(QMainWindow) :
         
     # matplotlib를 통한 이미지 plot 알고리즘    
     def setImageFunc(self, fig, canvas, checkable, num = 0, alpha= 17, inpainted = None, prediction = None, mask = None):
+        # 크기 설정
         val = 1
         
         if self.ax != None:
@@ -273,10 +287,12 @@ class Interact(QMainWindow) :
         ax.axis('off')
         print('set Image')
         
+        #brush & eraser 기능인 line 생성
         if self.maskRetriev:
             self.line, = ax.plot(self.xdata, self.ydata, linewidth=self.brushSizeSlider.value(), color=self.brushColor)
             print('set lines')
         
+        # maskRetriev 이후에는 첫번째 sublot에 그림자를 띄움
         if mask is not None:
             # mask
             val += 1
@@ -286,16 +302,16 @@ class Interact(QMainWindow) :
             ax = fig.add_subplot(1, num, val)
             ax.axis('off')
         
+        # Overlay를 하지 않는경우
         if not checkable:
-            # not Overlay
             image = inpainted.copy()
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             ax.imshow(image)
             disconnect_zoom = zoom_factory(ax)
             ax.axis(size)
             
+        # Overlay 시
         else:
-            # Overlay
             
             image = inpainted.copy()
             # Mask의 값이 모두 0일 경우 255로 나눌때 ValueError가 생김
@@ -306,6 +322,7 @@ class Interact(QMainWindow) :
                 
             maskimg = maskimg.astype(np.uint8)            
             
+            # alpha 값을 추가하여 opacity를 조정할 수 있도록 mask 조정
             shadow_area = np.array([maskimg, maskimg, maskimg, maskimg]).transpose(1, 2, 0)
             outputImage = np.where(shadow_area == [1, 1, 1, 1], self.maskColor+(alpha*15,), shadow_area)
             
@@ -321,6 +338,7 @@ class Interact(QMainWindow) :
                 
         ax.title.set_text('Inpainting')
         
+        # mask, predicted, inpainted 3가지를 plot 하는 경우
         if  num > 1 and prediction is not None:
             # prediction
             val += 1
@@ -400,7 +418,7 @@ class Interact(QMainWindow) :
             self.maskOpacitySlider.show()
         
         self.fig2, self.ax2 = plt.subplots(figsize=(self.maskImage.shape[1]/100, self.maskImage.shape[0]/100)) # figsize = value * dpi(default 100)이므로
-        self.originalImage = {'image': [self.shadowImage, self.maskImage], 'imName': os.path.basename(self.shadowImageDir)}
+        self.originalImage = {'image': [self.shadowImage], 'imName': os.path.basename(self.shadowImageDir)}
         
         self.eventConnect()
         
@@ -414,6 +432,7 @@ class Interact(QMainWindow) :
             self.predictImage, self.inpaintImage, self.maskImage = self.shadowRemovalUpload(self.shadowImage, self.maskImage, self.maskSetting.dilateMaskCheckbox.isChecked())
             self.maskImage = cv2.cvtColor(self.maskImage, cv2.COLOR_RGB2GRAY)
             
+            self.originalImage['image'].append(self.maskImage.copy())
             self.originalImage['image'].append(self.inpaintImage.copy())
             self.originalImage['image'].append(self.predictImage.copy())
             
@@ -446,9 +465,8 @@ class Interact(QMainWindow) :
                     self.num=2
                     maskEdge = self.extractMaskEdge(self.maskImage)
                     
-                    self.originalImage['image'].append(maskEdge.copy())
-                    
                     self.predictImage, self.inpaintImage, mask = self.shadowRemovalUpload(self.shadowImage, maskEdge, removalModel='Inpainting')
+                    self.originalImage['image'].append(mask.copy())
                     self.ax = self.setImageFunc(fig=self.fig, canvas=self.canvas, checkable=self.maskOverlayCheckbox.isChecked(), num=self.num, alpha = self.maskOpacitySlider.value(), inpainted=self.shadowImage, prediction=None, mask = self.maskImage)
                     self.ax = self.setImageFunc(fig = shadowRemovalFig, canvas=shadowRemovalCanvas, checkable=False, num=1, inpainted=self.inpaintImage, prediction=None, mask = None)
                     self.ax = self.setImageFunc(fig = predictFig, canvas = predictCanvas, checkable=False, num=1, inpainted = self.predictImage, prediction=None, mask=None)
@@ -477,9 +495,8 @@ class Interact(QMainWindow) :
                     self.num = 3
                     maskEdge = self.extractMaskEdge(self.maskImage)
                     
-                    self.originalImage['image'].append(maskEdge.copy())
-                    
                     self.predictImage, self.inpaintImage, mask = self.shadowRemovalUpload(self.shadowImage, maskEdge, removalModel='Inpainting')
+                    self.originalImage['image'].append(mask.copy())
                     self.ax = self.setImageFunc(fig=self.fig, canvas=self.canvas, checkable=self.maskOverlayCheckbox.isChecked(), num=self.num, alpha = self.maskOpacitySlider.value(), inpainted=self.shadowImage, prediction=self.predictImage, mask = self.maskImage)
                     
                     self.originalImage['image'].append(self.inpaintImage.copy())
@@ -499,7 +516,7 @@ class Interact(QMainWindow) :
         
     def saveFunc(self):
         
-        DirOpen = QFileDialog.getExistingDirectory(self, 'Select Directory', './')
+        DirOpen = QFileDialog.getExistingDirectory(self, 'Select save Directory', './')
         self.saveDir = DirOpen
          
         if self.saveDir != 'None' and self.saveDir != '':
