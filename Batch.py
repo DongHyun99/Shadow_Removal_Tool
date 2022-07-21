@@ -2,6 +2,7 @@ import os
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
+from PyQt5.QtCore import Qt
 import json
 import requests
 import cv2
@@ -9,6 +10,8 @@ import numpy as np
 import glob
 import zipfile
 import base64
+import shutil
+from distutils.dir_util import copy_tree
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -21,19 +24,21 @@ class Batch(QMainWindow):
         self.ui = uic.loadUi('UI/batch.ui', self)
         self.setWindowTitle('ShadowRemoval (Batch mode) Demo')
 
+        shutil.rmtree('result')
+        os.mkdir('result')
+        
         # api로 전송할 이미지 directory    
         self.shadowImageDir = 'None'
         self.maskImageDir= 'None'
         self.GTImageDir = 'None'
         self.resultImageDir = 'None'
         
-        self.GTDir = 'None'
         self.saveDir = 'None'
         self.shadowImage = None
         self.maskImage = None
         self.GTImage = None
-        self.predictImage = None
-        self.inpaintImage = None
+        self.resultImage = None
+
         self.shadowImageList = []
         self.maskImageList = []
         self.GTImageList = []
@@ -47,8 +52,10 @@ class Batch(QMainWindow):
         self.selectDirectory()
         self.checkbox()
         self.selectButton()
+        self.radio()
         
         self.maskImageCheckbox.toggle()
+        self.predictedRadio.toggle()
         
         self.shadowFig = plt.Figure()
         self.maskFig = plt.Figure()
@@ -100,8 +107,14 @@ class Batch(QMainWindow):
         
     def checkbox(self):
         self.maskImageCheckbox.clicked.connect(self.maskImageToggle)
-        self.detectionModelCheckbox.clicked.connect(self.detectionModelToggle)        
-         
+        self.detectionModelCheckbox.clicked.connect(self.detectionModelToggle)   
+        
+    def radio(self):
+        self.predictedRadio.clicked.connect(self.selectResult)
+        self.inpaintedRadio.clicked.connect(self.selectResult)
+        self.edgePredictedRadio.clicked.connect(self.selectResult)
+        self.edgeInpaintedRadio.clicked.connect(self.selectResult)
+                 
     def loadModels(self):
         res = requests.get(self.ip + 'modelList')
         models = json.loads(res.json())
@@ -114,6 +127,8 @@ class Batch(QMainWindow):
             
     def selectButton(self):
         self.run.clicked.connect(self.shadowRemovalUpload)
+        self.Save.clicked.connect(self.saveFunc)
+        self.Clear.clicked.connect(self.clearFunc)
         
     
     # ===================================================================
@@ -159,6 +174,25 @@ class Batch(QMainWindow):
                     
             self.GTScrollArea.setWidget(self.GTImageSelect)
             self.GTImageSelect.itemClicked.connect(self.showGT)
+            
+    def selectResult(self):
+        self.resultImageSelect = QListWidget()
+        resultList = os.listdir(os.path.join('result', 'predicted'))
+        for idx, l in enumerate(resultList):
+            if '.png' in l or '.jpg' in l or '.JPG' in l:
+                self.resultImageSelect.insertItem(idx, l)
+
+        if self.predictedRadio.isChecked():
+            self.resultImageDir = os.path.join('result', 'predicted')
+        elif self.inpaintedRadio.isChecked():
+            self.resultImageDir = os.path.join('result', 'inpainted')
+        elif self.edgePredictedRadio.isChecked():
+            self.resultImageDir = os.path.join('result', 'edgePredicted')
+        else:
+            self.resultImageDir = os.path.join('result', 'edgeInpainted')
+        
+        self.resultScrollArea.setWidget(self.resultImageSelect)
+        self.resultImageSelect.itemClicked.connect(self.showResult)
     
     def showShadow(self):
         if self.shadowImageSelect.currentItem().text() is not None:
@@ -181,6 +215,14 @@ class Batch(QMainWindow):
             name = self.GTImageSelect.currentItem().text()
             imgDir = os.path.join(self.GTImageDir, name)
             self.GTImage = cv2.imread(imgDir)
+            
+            self.setImageFunc()
+            
+    def showResult(self):
+        if self.resultImageSelect.currentItem().text() is not None:
+            name = self.resultImageSelect.currentItem().text()
+            imgDir = os.path.join(self.resultImageDir, name)
+            self.resultImage = cv2.imread(imgDir)
             
             self.setImageFunc()
     
@@ -241,12 +283,23 @@ class Batch(QMainWindow):
             self.GTFig.clear()
             ax = self.GTFig.add_subplot(1, 1, 1)
             ax.axis('off')
-            ax.title.set_text('mask')
+            ax.title.set_text('GT')
             gt = cv2.cvtColor(self.GTImage, cv2.COLOR_BGR2RGB)
             ax.imshow(gt)
             disconnect_zoom = zoom_factory(ax)
             self.GTFig.tight_layout()
             self.GTCanvas.draw()
+            
+        if self.resultImage is not None:
+            self.resultFig.clear()
+            ax = self.resultFig.add_subplot(1, 1, 1)
+            ax.axis('off')
+            ax.title.set_text('GT')
+            result = cv2.cvtColor(self.resultImage, cv2.COLOR_BGR2RGB)
+            ax.imshow(result)
+            disconnect_zoom = zoom_factory(ax)
+            self.resultFig.tight_layout()
+            self.resultCanvas.draw()
 
     # def runFunc(self):
         # if self.shadowImageDir != 'None' and self.maskImageDir != 'None':
@@ -282,7 +335,10 @@ class Batch(QMainWindow):
             with open("data/mask.zip", "rb") as f:
                 bytes = f.read()
                 maskZip = base64.b64encode(bytes)
-            
+        
+        dilateValue = 'None'
+        if self.dilateCheckbox.isChecked():
+            dilateValue = self.dilateValueSlider.value()
         
         os.chdir(dir)
         
@@ -292,7 +348,7 @@ class Batch(QMainWindow):
             
         upload = {'mode': 'Batch', 'removal': True, 'detection': self.detectionModelCheckbox.isChecked(), 'perf': False,
                       'removalModel': removalModel, 'detectionModel': detectionModel, 'shadowImage': shadowZip, 'maskImage': maskZip, 'GTImage': 'None',
-                      'dilateValue': 'None'}
+                      'dilateValue': dilateValue}
             
         res = requests.post(self.ip + 'predict', data=upload)
         res = json.loads(res.json())
@@ -301,6 +357,7 @@ class Batch(QMainWindow):
         img_mask = res['maskImage']
         perf = res['perf']
         
+        # predicted
         predictZip = base64.b64decode(img_predicted)
         with open(os.path.join('result','predicted.zip'), 'wb') as f:
                 f.write(predictZip)   
@@ -308,7 +365,8 @@ class Batch(QMainWindow):
         os.makedirs(os.path.join('result', 'predicted'), exist_ok=True)
         for file in predictZip.namelist():
                 predictZip.extract(file, os.path.join('result', 'predicted'))
-                
+        
+        # inpainted        
         inpaintZip = base64.b64decode(img_inpainted)
         with open(os.path.join('result','inpainted.zip'), 'wb') as f:
                 f.write(inpaintZip)   
@@ -316,7 +374,8 @@ class Batch(QMainWindow):
         os.makedirs(os.path.join('result', 'inpainted'), exist_ok=True)
         for file in inpaintZip.namelist():
                 inpaintZip.extract(file, os.path.join('result', 'inpainted'))
-                
+        
+        # masked
         maskZip = base64.b64decode(img_mask)
         with open(os.path.join('result','masked.zip'), 'wb') as f:
                 f.write(maskZip)   
@@ -324,6 +383,124 @@ class Batch(QMainWindow):
         os.makedirs(os.path.join('result', 'masked'), exist_ok=True)
         for file in maskZip.namelist():
                 maskZip.extract(file, os.path.join('result', 'masked'))
+        
+        # masked - edge        
+        os.makedirs(os.path.join('result', 'edgeMask'), exist_ok=True)
+        for mask in maskList:
+            img = cv2.imread(os.path.join('result', 'masked', mask), cv2.IMREAD_GRAYSCALE)
+            img = self.extractMaskEdge(img)
+            cv2.imwrite(os.path.join('result', 'edgeMask', mask), img)
+            
+        os.chdir(os.path.join('result', 'masked'))
+        
+        edgeZip = zipfile.ZipFile(os.path.join(dir, 'result/edgeMask.zip'), 'w')
+    
+        for mask in maskList:
+            edgeZip.write(mask)
+        edgeZip.close()
+        
+        GTZip = 'None'
+        if self.GTImageCheckbox.isChecked():
+            GTList = os.listdir(self.GTImageDir)
+            os.chdir(self.GTImageDir)
+
+            GTZip = zipfile.ZipFile(os.path.join(dir, 'data/GT.zip'), 'w')
+            
+            for gt in GTList:
+                GTZip.write(gt)
+            GTZip.close()
+
+            os.chdir(dir)
+            with open("data/GT.zip", "rb") as f:
+                bytes = f.read()
+                GTZip = base64.b64encode(bytes)
+        
+        os.chdir(dir)
+        
+        with open("result/edgeMask.zip", "rb") as f:
+            bytes = f.read()
+            edgeZip = base64.b64encode(bytes)
+            
+        with open("result/inpainted.zip", "rb") as f:
+            bytes = f.read()
+            inpaintZip = base64.b64encode(bytes)
+            
+        upload = {'mode': 'Batch', 'removal': True, 'detection': False, 'perf': self.GTImageCheckbox.isChecked(), 'removalModel': removalModel, 'detectionModel': detectionModel,
+                  'shadowImage': inpaintZip, 'maskImage': edgeZip, 'GTImage': GTZip, 'dilateValue': 'None'}
+
+        res = requests.post(self.ip + 'predict', data=upload)
+        res = json.loads(res.json())
+        img_predicted = res['predictImage']
+        img_inpainted = res['inpaintingImage']
+        img_mask = res['maskImage']
+        perf = res['perf']
+        
+        # predicted - edge
+        edgePredictZip = base64.b64decode(img_predicted)
+        with open(os.path.join('result','edgePredicted.zip'), 'wb') as f:
+                f.write(edgePredictZip)   
+        edgePredictZip = zipfile.ZipFile(os.path.join('result', 'edgePredicted.zip'))
+        os.makedirs(os.path.join('result', 'edgePredicted'), exist_ok=True)
+        for file in edgePredictZip.namelist():
+                edgePredictZip.extract(file, os.path.join('result', 'edgePredicted'))
+        
+        # inpainted - edge       
+        edgeInpaintZip = base64.b64decode(img_inpainted)
+        with open(os.path.join('result','edgeInpainted.zip'), 'wb') as f:
+                f.write(edgeInpaintZip)   
+        edgeInpaintZip = zipfile.ZipFile(os.path.join('result', 'edgeInpainted.zip'))
+        os.makedirs(os.path.join('result', 'edgeInpainted'), exist_ok=True)
+        for file in edgeInpaintZip.namelist():
+                edgeInpaintZip.extract(file, os.path.join('result', 'edgeInpainted'))
+        
+        if perf != 'None' and perf != None:
+            print('perf:{}'.format(perf))
+            value = 'inpainted: [RMSE: {}, RMSE-Shadow: {}, RMSE-nonShadow: {}] / predicted: [RMSE: {}, RMSE-Shadow: {}, RMSE-nonShadow: {}]'.format(
+                round(perf['inpainted']['RMSE'],3), round(perf['inpainted']['RMSE-S'],3), round(perf['inpainted']['RMSE-N'],3),
+                round(perf['predicted']['RMSE'],3), round(perf['predicted']['RMSE-S'],3), round(perf['predicted']['RMSE-N'],3)
+            )  
+            self.perf.setText(value)
+            font = self.perf.font()
+            font.setBold(True)
+            self.perf.setFont(font)
+            self.perf.setAlignment(Qt.AlignCenter)
+        
+    def saveFunc(self):
+        
+        DirOpen = QFileDialog.getExistingDirectory(self, 'Select save Directory', './')
+        self.saveDir = DirOpen
+         
+        if self.saveDir != 'None' and self.saveDir != '':
+            print('save dir: '+self.saveDir)
+            copy_tree(self.shadowImageDir, os.path.join(self.saveDir, 'shadow'))
+            copy_tree(self.maskImageDir, os.path.join(self.saveDir, 'mask'))
+            copy_tree(self.maskImageDir, os.path.join(self.saveDir, 'GT'))
+            copy_tree('result', self.saveDir)
+            
+            shutil.rmtree('result')
+            os.mkdir('result')
+            
+    def clearFunc(self):
+        self.Clear = Batch()
+        self.Clear.show()
+        self.close()
+            
+        
+    def extractMaskEdge(self, mask):    # mask [:,:, 1]
+        #mask_double =np.asarry(mask, dtype=np.double)
+        gx, gy = np.gradient(mask)
+        
+        temp_edge = gy * gy + gx * gx
+        
+        dilateValue = self.dilateValueSlider.value()         
+        kernel = np.ones((3,3), np.uint8)
+        mask = cv2.dilate(temp_edge, kernel, dilateValue*10)
+        print(f"Edge Dilate: {dilateValue*10}")
+ 
+        mask[mask != 0.0] = 255.0
+        mask = np.asarray(mask, dtype=np.uint8)
+        
+        return mask
         
     def change_ui(self):
         from Interactive import Interact

@@ -551,7 +551,7 @@ border-radius: 5px;</string>
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Evaluation&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
     </widget>
-    <widget class="QSlider" name="maskOpacitySlider">
+    <widget class="QSlider" name="dilateValueSlider">
      <property name="geometry">
       <rect>
        <x>760</x>
@@ -573,7 +573,7 @@ border-radius: 5px;</string>
       <number>1</number>
      </property>
      <property name="value">
-      <number>3</number>
+      <number>2</number>
      </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -598,7 +598,7 @@ border-radius: 5px;</string>
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Dilate Mask&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
     </widget>
-    <widget class="QCheckBox" name="maskOverlayCheckbox">
+    <widget class="QCheckBox" name="dilateCheckbox">
      <property name="geometry">
       <rect>
        <x>730</x>
@@ -851,28 +851,28 @@ border-radius: 5px;</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="1">
-       <widget class="QRadioButton" name="radioButton_2">
+       <widget class="QRadioButton" name="inpaintedRadio">
         <property name="text">
          <string>inpainted</string>
         </property>
        </widget>
       </item>
       <item row="0" column="0">
-       <widget class="QRadioButton" name="radioButton">
+       <widget class="QRadioButton" name="predictedRadio">
         <property name="text">
          <string>predicted</string>
         </property>
        </widget>
       </item>
       <item row="1" column="0">
-       <widget class="QRadioButton" name="radioButton_3">
+       <widget class="QRadioButton" name="edgePredictedRadio">
         <property name="text">
          <string>edge predicted</string>
         </property>
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QRadioButton" name="radioButton_4">
+       <widget class="QRadioButton" name="edgeInpaintedRadio">
         <property name="text">
          <string>edge inpainted</string>
         </property>

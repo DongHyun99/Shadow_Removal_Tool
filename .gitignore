@@ -1,6 +1,7 @@
 data/
 venv/
 result/
+save/
 
 mask.zip
 shadow.zip

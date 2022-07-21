@@ -34,6 +34,10 @@ cv2.imwrite('test.png', img)
 cv2.imwrite('cont.png', cont_dst)
 '''
 
-img = cv2.imread(os.path.join('data', 'dron_patch', '01_DSC02088_mask.png'), cv2.IMREAD_GRAYSCALE)
-img = np.array(np.where(img > 10, 255, 0), np.uint8)
+img = cv2.imread(os.path.join('data', 'ISTD', 'mask', '90-1.png'), cv2.IMREAD_GRAYSCALE)
+#img = np.array(np.where(img > 10, 255, 0), np.uint8)
+
+kernel = np.ones((3,3), np.uint8)
+img = cv2.dilate(img, kernel, 40)
+
 cv2.imwrite('img.png', img)
