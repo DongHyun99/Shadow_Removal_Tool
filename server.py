@@ -97,7 +97,7 @@ def prediction():
                 maskImages = MTMT(detection_model_dir, detectionModel, shadow_dir, mask_dir)
                 for maskIm, shadow in zip(maskImages, shadowImages):
                     maskIm = np.array(np.where(maskIm > 10, 255, 0), np.uint8)
-                    cv2.imwrite(os.path.join(mask_dir, shadow.replace('/shadow/', '/mask/')), maskImage)
+                    cv2.imwrite(os.path.join(mask_dir, shadow.replace('/shadow/', '/mask/')), maskIm)
         
         else:
             shadowImageZip = base64.b64decode(shadowImage)
@@ -123,6 +123,7 @@ def prediction():
             maskImages = glob.glob(mask_dir+'/*.png')
             
             if dilateValue != 'None':
+                print('dilate')
                 for mask in maskImages:
                     maskim = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
                 
@@ -133,6 +134,25 @@ def prediction():
                     cv2.imwrite(mask, maskim)
                 
         if removal:
+            
+            # perf가 True일 경우 RMSE performance를 계산하여 같이 반환
+            if perf:
+                print('RMSE calculate')
+                GTZip = base64.b64decode(GTImage)
+            
+                with open(os.path.join('data',request.remote_addr,'GT.zip'), 'wb') as f:
+                    f.write(GTZip)
+
+                GTZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'GT.zip'))
+
+                for file in GTZip.namelist():
+                    GTZip.extract(file, GT_dir)
+
+                inpainted_perfValue = main(mask_dir, GT_dir, inpainted_dir, True)
+                predicted_perfValue = main(mask_dir, GT_dir, predicted_dir, True)
+                
+                perfValue = {'inpainted': inpainted_perfValue, 'predicted': predicted_perfValue}
+            
             path = os.path.join(removal_model_dir, removalModel)
             add_dir = os.path.join('data', request.remote_addr)
             predictWithDir(add_dir, None, path, False, '.png', opt)
@@ -147,11 +167,11 @@ def prediction():
             maskZip.write(mask)
         maskZip.close()    
         os.chdir(dir)
-        with open(os.path.join(dir, 'data', request.remote_addr, 'mask.zip'), "rb") as f:
+        with open(os.path.join('data', request.remote_addr, 'mask.zip'), "rb") as f:
             bytes = f.read()
-            maskZip = base64.b64encode(bytes)
+            maskZip = base64.b64encode(bytes).decode('UTF-8')
             
-        #predict
+        # predict
         predictList = os.listdir(predicted_dir)
         os.chdir(predicted_dir)
         predictZip = zipfile.ZipFile(os.path.join(dir, 'data', request.remote_addr, 'predicted.zip'), 'w')
@@ -159,11 +179,11 @@ def prediction():
             predictZip.write(pred)
         predictZip.close()    
         os.chdir(dir)
-        with open(os.path.join(dir, 'data', request.remote_addr, 'predicted.zip'), "rb") as f:
+        with open(os.path.join('data', request.remote_addr, 'predicted.zip'), "rb") as f:
             bytes = f.read()
-            predictZip = base64.b64encode(bytes)
+            predictZip = base64.b64encode(bytes).decode('UTF-8')
             
-        #predict
+        # inpaint
         inpaintList = os.listdir(inpainted_dir)
         os.chdir(inpainted_dir)
         inpaintZip = zipfile.ZipFile(os.path.join(dir, 'data', request.remote_addr, 'inpainted.zip'), 'w')
@@ -171,9 +191,9 @@ def prediction():
             inpaintZip.write(inp)
         inpaintZip.close()    
         os.chdir(dir)
-        with open(os.path.join(dir, 'data', request.remote_addr, 'inpainted.zip'), "rb") as f:
+        with open(os.path.join('data', request.remote_addr, 'inpainted.zip'), "rb") as f:
             bytes = f.read()
-            inpaintZip = base64.b64encode(bytes)
+            inpaintZip = base64.b64encode(bytes).decode('UTF-8')
             
         response = {'predictImage': predictZip, 'inpaintingImage': inpaintZip, 'maskImage': maskZip, 'perf': perfValue}
         js = json.dumps(response, indent=4)

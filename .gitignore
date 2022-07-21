@@ -1,4 +1,5 @@
 /data
+/result
 venv/
 
 # Detection Models pth
