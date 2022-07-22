@@ -5,12 +5,12 @@ import os
 
 img_x_size = 3000
 img_y_size = 2000
-patch_x_size = 600
-patch_y_size = 400
+patch_x_size = 1000
+patch_y_size = 1000
 stride = 0
 dir = 'save/'
 original_input = 'data/patch_test/original/shadow/'
-patch_input = dir + 'edgeInpainted/'
+patch_input = dir + 'predicted/'
 merge_output = dir + ''
 form ='.png'
 

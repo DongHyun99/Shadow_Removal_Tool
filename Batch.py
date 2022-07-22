@@ -474,7 +474,8 @@ class Batch(QMainWindow):
             print('save dir: '+self.saveDir)
             copy_tree(self.shadowImageDir, os.path.join(self.saveDir, 'shadow'))
             copy_tree(self.maskImageDir, os.path.join(self.saveDir, 'mask'))
-            copy_tree(self.maskImageDir, os.path.join(self.saveDir, 'GT'))
+            if self.GTImageCheckbox.isChecked():
+                copy_tree(self.GTImageDir, os.path.join(self.saveDir, 'GT'))
             copy_tree('result', self.saveDir)
             
             shutil.rmtree('result')
