@@ -39,7 +39,7 @@ class sampleDataset(Dataset):
         #print('before transform', img)
         masked_img = self.transform(masked_img)
         mask = np.transpose(mask, (1, 2, 0))
-        img = masked_img
+        img = masked_img + np.abs(255 - mask)/255 * img
         #print('after transform', img)
         img = np.transpose(img, (2, 0, 1))
         mask = np.transpose(mask, (2, 0, 1))
@@ -52,7 +52,11 @@ dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
 
 batch = next(iter(dataloader))
 img = batch['image'][0]
+mask = batch['mask'][0]
 img = np.transpose(img, (1, 2, 0))
+mask = np.transpose(mask, (1, 2, 0))
 img = img.numpy()
+mask = mask.numpy()
 
 cv2.imwrite('sample.png', img)
+cv2.imwrite('mask.png', mask)
