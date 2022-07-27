@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+import glob
 
 
 mask_path = os.path.join('data', 'test', 'mask.png')
@@ -28,6 +29,3 @@ def normalize():
         hist = cv2.calcHist([ch], [0], None, [256], [1, 256])
         plt.plot(hist, color = color)
     plt.show()
-    
-# mask_and()    
-normalize()
