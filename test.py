@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
+import albumentations as A
 
 from saicinpainting.training.data.masks import get_mask_generator
 
@@ -16,7 +17,7 @@ with open(train_config_path, 'r') as f:
     
 indir = os.path.join('data', '129.254.82.87', 'shadow')
   
-tf = transforms.Compose([transforms.ToPILImage(), transforms.ColorJitter(brightness=1.0, contrast=1.0)])
+tf = A.Compose([A.RandomBrightnessContrast(always_apply=True, p=1.0, brightness_limit=(0.0, 0.7), contrast_limit=(-0.7, 0.0), brightness_by_max=True)])
 mask_generator = get_mask_generator(kind="mixed", kwargs=train_config.data.train.mask_gen_kwargs)
 
 class sampleDataset(Dataset):
@@ -37,9 +38,9 @@ class sampleDataset(Dataset):
         img = np.transpose(img, (1, 2, 0))
         masked_img = cv2.bitwise_and(img, img, mask=mask[0])
         #print('before transform', img)
-        masked_img = self.transform(masked_img)
+        masked_img = self.transform(image=masked_img)['image']
         mask = np.transpose(mask, (1, 2, 0))
-        img = masked_img + np.abs(255 - mask)/255 * img
+        img = mask / 255 * masked_img + (255 - mask) / 255 * img
         #print('after transform', img)
         img = np.transpose(img, (2, 0, 1))
         mask = np.transpose(mask, (2, 0, 1))
@@ -57,6 +58,9 @@ img = np.transpose(img, (1, 2, 0))
 mask = np.transpose(mask, (1, 2, 0))
 img = img.numpy()
 mask = mask.numpy()
+
+kernel = np.ones((3,3), np.uint8)
+mask = cv2.erode(mask, kernel, iterations=5)
 
 cv2.imwrite('sample.png', img)
 cv2.imwrite('mask.png', mask)
