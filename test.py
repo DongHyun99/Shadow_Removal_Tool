@@ -1,3 +1,4 @@
+from cv2 import transform
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 import albumentations as A
@@ -15,9 +16,11 @@ train_config_path = os.path.join('model', 'removal_models', 'Inpainting', 'confi
 with open(train_config_path, 'r') as f:
     train_config = OmegaConf.create(yaml.safe_load(f))
     
-indir = os.path.join('data', '129.254.82.87', 'shadow')
+indir = os.path.join('samples')
   
-tf = A.Compose([A.RandomBrightnessContrast(always_apply=True, p=1.0, brightness_limit=(0.0, 0.7), contrast_limit=(-0.7, 0.0), brightness_by_max=True)])
+tf = A.Compose([A.RandomBrightnessContrast(always_apply=True, p=1.0, brightness_limit=(-0.3, -0.1), contrast_limit=(-0.3, 0.0), brightness_by_max=True)])
+tf2 = A.Compose([A.RandomShadow(shadow_roi=(0, 0, 1, 1), num_shadows_lower=1, num_shadows_upper=3, shadow_dimension=4, always_apply=True, p=1.0)])
+
 mask_generator = get_mask_generator(kind="mixed", kwargs=train_config.data.train.mask_gen_kwargs)
 
 class sampleDataset(Dataset):
@@ -36,31 +39,36 @@ class sampleDataset(Dataset):
         img = np.transpose(img, (2, 0, 1))
         mask = np.uint8(self.mask_generator(img, iter_i=self.iter_i)*255)
         img = np.transpose(img, (1, 2, 0))
-        masked_img = cv2.bitwise_and(img, img, mask=mask[0])
-        #print('before transform', img)
-        masked_img = self.transform(image=masked_img)['image']
+        transform_img = self.transform(image=img)['image']
+        masked_img = cv2.bitwise_and(transform_img, transform_img, mask=mask[0])
         mask = np.transpose(mask, (1, 2, 0))
         img = mask / 255 * masked_img + (255 - mask) / 255 * img
         #print('after transform', img)
         img = np.transpose(img, (2, 0, 1))
         mask = np.transpose(mask, (2, 0, 1))
+
         self.iter_i += 1
         return dict(image=img,
-                    mask=mask)
+                    mask=mask,
+                    transform=transform_img)
     
-dataset = sampleDataset(indir, mask_generator, tf)
+dataset = sampleDataset(indir, mask_generator, tf2)
 dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
 
 batch = next(iter(dataloader))
 img = batch['image'][0]
 mask = batch['mask'][0]
+transform_img = batch['transform'][0]
+
 img = np.transpose(img, (1, 2, 0))
 mask = np.transpose(mask, (1, 2, 0))
+transform_img = np.transpose(transform_img, (0, 1, 2))
 img = img.numpy()
 mask = mask.numpy()
+transform_img = transform_img.numpy()
 
-kernel = np.ones((3,3), np.uint8)
-mask = cv2.erode(mask, kernel, iterations=5)
+print(transform_img.shape)
 
 cv2.imwrite('sample.png', img)
 cv2.imwrite('mask.png', mask)
+cv2.imwrite('fake_shadow.png', transform_img)
