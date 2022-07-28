@@ -6,7 +6,10 @@ img_x_size = 6000
 img_y_size = 4000
 patch_x_size = 600
 patch_y_size = 400
-stride = 200
+stride_x = patch_x_size
+stride_y = patch_y_size
+# stride를 없애고 싶으면, patch 사이즈와 같이 해주면 됨
+
 input_dir_image = os.path.join('data', 'dron')
 
 img_dir = os.path.join(input_dir_image, 'shadow')
@@ -27,10 +30,10 @@ os.makedirs(os.path.join(output_dir, 'free_mask'), exist_ok=True)
 for imname, maskname in zip(img_list, mask_list):
     img = cv2.imread(os.path.join(img_dir, imname))
     mask = cv2.imread(os.path.join(mask_dir, maskname), cv2.IMREAD_GRAYSCALE)
-    for i in range(0,(img_x_size-patch_x_size)//stride+1,1):
-        for k in range(0,(img_y_size-patch_y_size)//stride+1,1):
-            x = i*stride
-            y = k*stride
+    for i in range(0,(img_x_size-patch_x_size)//stride_x+1,1):
+        for k in range(0,(img_y_size-patch_y_size)//stride_y+1,1):
+            x = i*stride_x
+            y = k*stride_y
             patch = img[y:y+patch_y_size, x:x+patch_x_size]
             mask_patch = mask[y:y+patch_y_size, x:x+patch_x_size]
             count_contour = cv2.countNonZero(mask_patch)

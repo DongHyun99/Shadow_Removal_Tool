@@ -358,7 +358,7 @@ class Interact(QMainWindow) :
     
     def dilateFunc(self):
         kernel = np.ones((3,3), np.uint8)
-        self.maskImage = cv2.dilate(self.maskImage, kernel, self.dilateErodeIterationsSlider.value())
+        self.maskImage = cv2.dilate(self.maskImage.astype('uint8'), kernel, self.dilateErodeIterationsSlider.value())
         print(f"Dilate ...")
         
         mask = None
