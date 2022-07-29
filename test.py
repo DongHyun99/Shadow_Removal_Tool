@@ -16,10 +16,10 @@ train_config_path = os.path.join('model', 'removal_models', 'Inpainting', 'confi
 with open(train_config_path, 'r') as f:
     train_config = OmegaConf.create(yaml.safe_load(f))
     
-indir = os.path.join('samples')
+indir = os.path.join('data', '129.254.82.87', 'shadow')
   
 tf = A.Compose([A.RandomBrightnessContrast(always_apply=True, p=1.0, brightness_limit=(-0.3, -0.1), contrast_limit=(-0.3, 0.0), brightness_by_max=True)])
-tf2 = A.Compose([A.RandomShadow(shadow_roi=(0, 0, 1, 1), num_shadows_lower=1, num_shadows_upper=3, shadow_dimension=4, always_apply=True, p=1.0)])
+tf2 = A.Compose([A.RandomBrightnessContrast(always_apply=True, p=1.0, brightness_limit=(0.4, 0.4), contrast_limit=(-0.6, -0.6), brightness_by_max=True)])
 
 mask_generator = get_mask_generator(kind="mixed", kwargs=train_config.data.train.mask_gen_kwargs)
 
@@ -42,15 +42,13 @@ class sampleDataset(Dataset):
         transform_img = self.transform(image=img)['image']
         masked_img = cv2.bitwise_and(transform_img, transform_img, mask=mask[0])
         mask = np.transpose(mask, (1, 2, 0))
-        img = mask / 255 * masked_img + (255 - mask) / 255 * img
+        masked_img = mask / 255 * masked_img + (255 - mask) / 255 * img
         #print('after transform', img)
         img = np.transpose(img, (2, 0, 1))
         mask = np.transpose(mask, (2, 0, 1))
-
         self.iter_i += 1
-        return dict(image=img,
-                    mask=mask,
-                    transform=transform_img)
+        return dict(image=masked_img,
+                    mask=mask, target=img)
     
 dataset = sampleDataset(indir, mask_generator, tf2)
 dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
@@ -58,17 +56,25 @@ dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
 batch = next(iter(dataloader))
 img = batch['image'][0]
 mask = batch['mask'][0]
-transform_img = batch['transform'][0]
+target_img = batch['target'][0]
 
-img = np.transpose(img, (1, 2, 0))
+img = np.transpose(img, (0, 1, 2))
 mask = np.transpose(mask, (1, 2, 0))
-transform_img = np.transpose(transform_img, (0, 1, 2))
+target_img = np.transpose(target_img, (1, 2, 0))
 img = img.numpy()
 mask = mask.numpy()
-transform_img = transform_img.numpy()
-
-print(transform_img.shape)
+target_img = target_img.numpy()
 
 cv2.imwrite('sample.png', img)
 cv2.imwrite('mask.png', mask)
-cv2.imwrite('fake_shadow.png', transform_img)
+cv2.imwrite('fake_shadow.png', target_img)
+
+'''
+to real
+brightness = -0.7 ~ -0.8
+contrast = 1.2 ~ 1.5)
+
+to fake
+brightness = 0.3 0.4
+contrast = 0.4 ~ 0.6
+'''
