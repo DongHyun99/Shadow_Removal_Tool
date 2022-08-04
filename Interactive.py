@@ -13,7 +13,6 @@ import numpy as np
 from utils import Masking, Visualization, Server
 from Popup import ShadowRemovalPopup, PredictPopup
 
-
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -527,7 +526,7 @@ class Interact(QMainWindow) :
                     cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_original.png'), self.originalImage['image'][0])
                     cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_mask.png'), self.originalImage['image'][1])
                 if length >= 4:
-                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_inapinted.png'), self.originalImage['image'][2])
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_inpainted.png'), self.originalImage['image'][2])
                     cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_predicted.png'), self.originalImage['image'][3])
                 if length >= 7:
                     cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_maskEdge.png'), self.originalImage['image'][4])
