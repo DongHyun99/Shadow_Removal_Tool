@@ -78,6 +78,7 @@ class InpaintingDataset(Dataset):
 
         if self.pad_out_to_modulo is not None and self.pad_out_to_modulo > 1:
             result['shape'] = np.array(image.shape[1:])
+            result['unpad_to_size'] = result['image'].shape[1:]
             result['image'] = pad_img_to_modulo(result['image'], self.pad_out_to_modulo)
             result['mask'] = pad_img_to_modulo(result['mask'], self.pad_out_to_modulo)
 

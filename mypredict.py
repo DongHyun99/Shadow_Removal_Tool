@@ -14,6 +14,7 @@ from calc_rmse_eval import main
 from saicinpainting.training.trainers import load_checkpoint
 from torch.utils.data._utils.collate import default_collate
 from saicinpainting.training.data.datasets import make_default_val_dataset
+from saicinpainting.evaluation.refinement import refine_predict
 
 def move_to_device(obj, device):
     return {name: val.to(device) for name, val in obj.items()}
@@ -24,7 +25,10 @@ def predict(data, model_path):
     train_config_path = os.path.join(model_path, 'config.yaml')
     with open(train_config_path, 'r') as f:
         train_config = OmegaConf.create(yaml.safe_load(f))
-        
+    
+    if train_config.get('refine', False):
+        data['unpad_to_size'] = data['image'].shape[1:]
+    
     train_config.training_model.predict_only = True
     train_config.visualizer.kind = 'noop'
 
@@ -33,36 +37,46 @@ def predict(data, model_path):
     # print('before model')
     model = load_checkpoint(train_config, checkpoint_path, strict=False, map_location='cpu')
     model.freeze()
-    model.to(device)
     # print(model)
     # print('a')
-    with torch.no_grad():
-        # print('b')
-        # print(data)
-        tmp = default_collate([data])
-        # print('collated: ', tmp)
-        batch = move_to_device(tmp, device)
-        # print('device: ', batch)
-        aa = batch['image'][0]
-        bb = batch['mask'][0]
-        
-        batch['mask'] = (batch['mask'] > 0) * 1         # true/false --> 1 / 0 
-        # print('batch: ', batch)
-        # print('ok')
-        # print(batch['image'].shape, batch['mask'].shape)
-        batch = model(batch)
-        # print('modeled: ', batch)
-        cur_res = batch['inpainted'][0].permute(1, 2, 0).detach().cpu().numpy()     # [height, width, channel]
-        cur_res = np.clip(cur_res * 255, 0, 255).astype('uint8')
-        #cur_res = cv2.cvtColor(cur_res, cv2.COLOR_RGB2BGR)
-        cur_res2 = batch['predicted_image'][0].permute(1, 2, 0).detach().cpu().numpy()
-        cur_res2 = np.clip(cur_res2 * 255, 0, 255).astype('uint8')
-        if 'shape' in batch.keys():
-            height, width = torch.squeeze(batch['shape'])
-            # print(cur_res.shape)
-            cur_res = cur_res[:height, :width, :]
-            cur_res2 = cur_res2[:height, :width, :]
-        #cur_res2 = cv2.cvtColor(cur_res2, cv2.COLOR_RGB2BGR)
+    # print('b')
+    # print(data)
+    tmp = default_collate([data])
+    if train_config.get('refine', False):
+        assert 'unpad_to_size' in tmp, "Unpadded size is required for the refinement"
+        # image unpadding is taken care of in the refiner, so that output image
+        # is same size as the input image
+        cur_res, cur_res2 = refine_predict(tmp, model, **train_config.refiner)
+    else:
+        model.to(device)
+        with torch.no_grad():
+            
+            # print('collated: ', tmp)
+            batch = move_to_device(tmp, device)
+            # print('device: ', batch)
+            aa = batch['image'][0]
+            bb = batch['mask'][0]
+
+            batch['mask'] = (batch['mask'] > 0) * 1         # true/false --> 1 / 0 
+            # print('batch: ', batch)
+            # print('ok')
+            # print(batch['image'].shape, batch['mask'].shape)
+            batch = model(batch)
+            # print('modeled: ', batch)
+            cur_res = batch['inpainted']
+            cur_res2 = batch['predicted_image']
+            
+    cur_res = cur_res[0].permute(1, 2, 0).detach().cpu().numpy()     # [height, width, channel]
+    cur_res = np.clip(cur_res * 255, 0, 255).astype('uint8')
+    #cur_res = cv2.cvtColor(cur_res, cv2.COLOR_RGB2BGR)
+    cur_res2 = cur_res2[0].permute(1, 2, 0).detach().cpu().numpy()
+    cur_res2 = np.clip(cur_res2 * 255, 0, 255).astype('uint8')
+    if 'shape' in tmp.keys():
+        height, width = torch.squeeze(tmp['shape'])
+        # print(cur_res.shape)
+        cur_res = cur_res[:height, :width, :]
+        cur_res2 = cur_res2[:height, :width, :]
+    #cur_res2 = cv2.cvtColor(cur_res2, cv2.COLOR_RGB2BGR)
     return cur_res, cur_res2, model
 
 
