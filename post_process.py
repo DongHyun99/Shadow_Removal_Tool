@@ -1,50 +1,31 @@
 import cv2
-from cv2 import dilate
 import numpy as np
 import os
-import matplotlib.pyplot as plt
-import glob
+from post_util import hist, match_histograms
 from skimage import exposure
-import random
 
-def hist(img, mask = None, ratio = [0,256]):
+img = cv2.imread(os.path.join('save', 'baegot2 Color Constancy', 'img_inpainted_original.png'))
+mask = cv2.imread(os.path.join('save', 'baegot2 Color Constancy', 'img_inpainted_mask.png'), cv2.IMREAD_GRAYSCALE)
 
-    hist = cv2.calcHist(img, [0], mask, [256], ratio)
-    plt.plot(hist, color = 'b')
-    
-    hist = cv2.calcHist(img, [1], mask, [256], ratio)
-    plt.plot(hist, color = 'g')
-    
-    hist = cv2.calcHist(img, [2], mask, [256], ratio)
-    plt.plot(hist, color = 'r')
-    
-    plt.show()
+#img = cv2.imread(os.path.join('save', 'baegot','img_edgeInpainted.png'))
+#mask = cv2.imread(os.path.join('save', 'baegot', 'img_mask.png'), cv2.IMREAD_GRAYSCALE)
 
-img = cv2.imread(os.path.join('save', 'Color Constancy2', 'img_inapinted_original.png'))
-mask = cv2.imread(os.path.join('save', 'Color Constancy2', 'img_inapinted_mask.png'), cv2.IMREAD_GRAYSCALE)
+if img is not None and mask is not None:
+    print('img & mask True')
+else:
+    print('img or mask is None')
 
-#img = cv2.imread(os.path.join('save', 'dron low resolution', 'img_original_inpainted.png'))
-#mask = cv2.imread(os.path.join('save', 'dron low resolution', 'img_original_mask.png'), cv2.IMREAD_GRAYSCALE)
-
-
+mask[mask>0] = 255
 mask = np.expand_dims(mask, axis=2)
 
-kernel = np.ones((3,3), np.uint8)
-dilate_mask = cv2.dilate(mask, kernel,3 )
-dilate_mask = np.expand_dims(dilate_mask, axis=2)
-dilate_mask[dilate_mask>0] = 255
+masked = mask // 255 * img
+none_masked = (255-mask) // 255 * img
 
-masked = img
+masked = match_histograms(masked, none_masked, mask)
+masked = mask // 255 * masked + none_masked
 
-#masked = exposure.adjust_sigmoid(masked)
-#masked = exposure.adjust_log(masked, gain=0.8)
-val = random.uniform(1,3)
-img = exposure.adjust_sigmoid(img, cutoff=0.48, gain=val)
-print(val)
-masked = dilate_mask // 255 * masked
-img = (255-dilate_mask) // 255 * img
+cv2.imwrite('post-processing.png', masked)
+masked = masked.astype(np.uint8)
 
-masked = dilate_mask // 255 * masked + img
-cv2.imwrite('masked4.png', masked)
-#hist([img], mask = mask)
-#hist([img], mask = (255-mask))
+#hist([masked], mask = mask)
+#hist([masked], mask = (255-mask))

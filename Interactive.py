@@ -530,7 +530,7 @@ class Interact(QMainWindow) :
                     cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_predicted.png'), self.originalImage['image'][3])
                 if length >= 7:
                     cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_maskEdge.png'), self.originalImage['image'][4])
-                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_edgeInapinted.png'), self.originalImage['image'][5])
+                    cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_edgeInpainted.png'), self.originalImage['image'][5])
                     cv2.imwrite(os.path.join(self.saveDir, self.originalImage['imName'][:-4]+'_edgePredicted.png'), self.originalImage['image'][6])
     
     def clearFunc(self):
