@@ -114,7 +114,7 @@ def _infer(
     torch.Tensor
         inpainted image
     """
-    masked_image = image * (1 - mask)
+    masked_image = image
     masked_image = torch.cat([masked_image, mask], dim=1)
 
     mask = mask.repeat(1,3,1,1)

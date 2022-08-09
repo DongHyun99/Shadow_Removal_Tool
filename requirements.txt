@@ -1,5 +1,5 @@
-opencv-python==4.3.0.36
-opencv-python-headless==4.3.0.36
+opencv-python
+# opencv-python-headless==4.3.0.36
 pyyaml
 tqdm
 numpy
@@ -18,7 +18,7 @@ kornia==0.5.0
 webdataset
 packaging
 scikit-learn==0.24.2
-wldhx.yadisk-direct
+#wldhx.yadisk-direct
 #pyqt5==5.15.2
 #pyqt5-tools
 prettytable
