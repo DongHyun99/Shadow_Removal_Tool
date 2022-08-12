@@ -357,7 +357,7 @@ class Interact(QMainWindow) :
     
     def dilateFunc(self):
         kernel = np.ones((3,3), np.uint8)
-        self.maskImage = cv2.dilate(self.maskImage.astype('uint8'), kernel, self.dilateErodeIterationsSlider.value())
+        self.maskImage = cv2.dilate(self.maskImage.astype('uint8'), kernel, iterations=self.dilateErodeIterationsSlider.value())
         print(f"Dilate ...")
         
         mask = None
@@ -621,7 +621,9 @@ class Interact(QMainWindow) :
         
         dilateValue = self.maskSetting.dilateValueSlider.value()         
         kernel = np.ones((3,3), np.uint8)
-        mask = cv2.dilate(temp_edge, kernel, dilateValue)
+        mask = cv2.dilate(temp_edge, kernel, iterations=dilateValue)
+        for i in range(0,5,1):
+            mask = cv2.dilate(temp_edge, kernel, iterations=dilateValue)
         print(f"Edge Dilate: {dilateValue}")
  
         mask[mask != 0.0] = 255.0
@@ -743,7 +745,7 @@ class Interact(QMainWindow) :
                     if self.defaultDilateCheckbox.isChecked():
                         kernel = np.ones((5,5), np.uint8)
                         mask_target = mask_target.astype(np.uint8)
-                        mask_target = cv2.dilate(mask_target, kernel, self.dilateErodeIterationsSlider.value())
+                        mask_target = cv2.dilate(mask_target, kernel, iterations=self.dilateErodeIterationsSlider.value())
 
                     
                     #cropMask = np.logical_or(mask_target, cropMask)
