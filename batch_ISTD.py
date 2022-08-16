@@ -9,20 +9,22 @@ import os
 ''''''
 ip = 'http://129.254.81.18:50000/'
 
+requests.get(ip+'modelList')
+
 def shadowRemovalUpload():
         # 이미지 base64 인코딩 
-        with open("shadow.zip", "rb") as f:
+        with open(os.path.join('data', 'ISTD', 'shadow.zip'), "rb") as f:
             bytes = f.read()
             shadowImage = base64.b64encode(bytes)
-        with open("mask.zip", "rb") as f:
+        with open(os.path.join('data', 'ISTD', 'mask.zip'), "rb") as f:
             bytes = f.read()
             maskImage = base64.b64encode(bytes)
         
         GTImage = 'None'
-        dilateValue = 'None' # 9
+        dilateValue = 7
         
         upload = {'mode': 'Batch', 'removal': True, 'detection': False, 'perf': False,
-                  'removalModel': 'Inpainting', 'detectionModel': 'None', 
+                  'removalModel': 'SDR_LaMa', 'detectionModel': 'None', 
                   'shadowImage': shadowImage, 'maskImage': maskImage, 'GTImage': GTImage, 'dilateValue': dilateValue}
         
         # predict requests
