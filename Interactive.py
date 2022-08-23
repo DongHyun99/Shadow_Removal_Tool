@@ -621,10 +621,8 @@ class Interact(QMainWindow) :
         
         dilateValue = self.maskSetting.dilateValueSlider.value()         
         kernel = np.ones((3,3), np.uint8)
-        mask = cv2.dilate(temp_edge, kernel, iterations=dilateValue)
-        for i in range(0,5,1):
-            mask = cv2.dilate(temp_edge, kernel, iterations=dilateValue)
-        print(f"Edge Dilate: {dilateValue}")
+        mask = cv2.dilate(temp_edge, kernel, iterations=3)
+        print("Edge Dilate: 3")
  
         mask[mask != 0.0] = 255.0
         mask = np.asarray(mask, dtype=np.uint8)

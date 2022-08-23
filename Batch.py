@@ -496,7 +496,7 @@ class Batch(QMainWindow):
         
         dilateValue = self.dilateValueSlider.value()         
         kernel = np.ones((3,3), np.uint8)
-        mask = cv2.dilate(temp_edge, kernel, iterations=dilateValue*10)
+        mask = cv2.dilate(temp_edge, kernel, iterations=dilateValue)
         print(f"Edge Dilate: {dilateValue*10}")
  
         mask[mask != 0.0] = 255.0

@@ -1,6 +1,10 @@
 opencv-python==4.3.0.36
 opencv-python-headless==4.3.0.36
+pillow
+matplotlib
+mpl_interactions
 pyqt5==5.15.2
 pyqt5-tools
 flask
 requests
+scikit-image
