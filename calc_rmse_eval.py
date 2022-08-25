@@ -212,7 +212,7 @@ def calc_rmse_by_tensor(opt, img_list):
         f">> overall:\t{avg_mae_overall:10.6f} \t= {mae_sum_overall:15.5} / {len(img_list)}"
     )
     print(log)
-    opt.file_sdf_out.write(log)
+    # opt.file_sdf_out.write(log)
     
     return {'RMSE-S': avg_rmse_shadow, 'RMSE-N': avg_rmse_non_shadow, 'RMSE': avg_rmse_overall.item()}
 
@@ -333,6 +333,7 @@ def main(indir, gtdir, outdir, use_mask):
 
 
     opt.file_sdf_out = None
+    opt.write_metric = None
     # output file
     if opt.write_metric != None:
         output_sdf_path = os.path.join(opt.targetroot, opt.write_metric)

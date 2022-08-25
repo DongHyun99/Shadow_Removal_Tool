@@ -17,6 +17,8 @@ from utils import pad_img_to_modulo
 from mypredict import predict, predictWithDir
 from calc_rmse_eval import main
 
+# CUDA_VISIBLE_DEVICES=0 python3 server.py
+
 rest_port = 50000
 
 parser = argparse.ArgumentParser()
@@ -79,6 +81,9 @@ def prediction():
     
     # Batch Mode
     if mode == 'Batch':
+        
+        print('Batch Mode Start')
+        
         if detection:
             shadowImageZip = base64.b64decode(shadowImage)
             
@@ -130,7 +135,7 @@ def prediction():
                     # dilate 값이 있는 경우 mask를 수정해줌
                 
                     kernel = np.ones((3,3), np.uint8)
-                    maskim = cv2.dilate(maskim, kernel, int(dilateValue))
+                    maskim = cv2.dilate(maskim, kernel, iterations=int(dilateValue))
                     cv2.imwrite(mask, maskim)
                 
         if removal:
@@ -235,7 +240,7 @@ def prediction():
             
             if dilateValue != 'None':
                 kernel = np.ones((3,3), np.uint8)
-                mask = cv2.dilate(mask, kernel, int(dilateValue))
+                mask = cv2.dilate(mask, kernel, iterations=int(dilateValue))
             
             mask = np.expand_dims(mask, 0)
             mask = mask.astype('float32') / 255
@@ -256,6 +261,8 @@ def prediction():
             
             data = dict()
             data['image'] = img
+            if 'Ipainting' in removalModel:
+                data['image'] = (1-mask) / 255 * img
             data['mask'] = mask
             data['shape'] = np.array(img.shape[1:])
     

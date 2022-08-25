@@ -19,6 +19,9 @@ from saicinpainting.evaluation.refinement import refine_predict
 def move_to_device(obj, device):
     return {name: val.to(device) for name, val in obj.items()}
 
+def move_to_device_batch(obj, device):
+    return {name: val.to(device) for name, val in list(obj.items())[:3]}
+
 def predict(data, model_path):
     device = torch.device('cuda')
     # print(model_path)
@@ -42,6 +45,7 @@ def predict(data, model_path):
     # print('b')
     # print(data)
     tmp = default_collate([data])
+    print(tmp)
     if train_config.get('refine', False):
         assert 'unpad_to_size' in tmp, "Unpadded size is required for the refinement"
         # image unpadding is taken care of in the refiner, so that output image
@@ -140,7 +144,6 @@ def predictWithModel(data, m):
         # print('b')
         # print(data)
         tmp = default_collate([data])
-        # print('collated: ', tmp)
         batch = move_to_device(tmp, device)
         # print('device: ', batch)
         batch['mask'] = (batch['mask'] > 0) * 1
@@ -213,8 +216,8 @@ def predictWithDir(indir, gtdir, model_path, calc_rmse, img_suffix, edge_inpaint
         for i, data in enumerate(dataset):
             # print('b')
             tmp = default_collate([data])
-            # print('collated: ', tmp)
-            batch = move_to_device(tmp, device)
+            # print('collated: ', tmp.items())
+            batch = move_to_device_batch(tmp, device)
             # print('device: ', batch)
             batch['mask'] = (batch['mask'] > 0) * 1
             # print('batch: ', batch)

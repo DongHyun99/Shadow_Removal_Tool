@@ -1,17 +1,8 @@
-from cv2 import transform
-from torch.utils.data import Dataset, DataLoader
-import torchvision.transforms as transforms
-import albumentations as A
-
-from saicinpainting.training.data.masks import get_mask_generator
-
-from omegaconf import OmegaConf
-import yaml
-import glob
+from calc_rmse_eval import main
 import os
-import cv2
-import numpy as np
 
-white = np.ones((2000, 3000)) * 255
+indir = os.path.join('/data5/dh/ISTD_dataset/test/', 'test_B')
+gtdir = os.path.join('/data5/dh/ISTD_dataset/test/', 'test_C_fixed_official')
+outdir = os.path.join('result', 'sg-shadowNet-official', 'aistd')
 
-cv2.imwrite('mask.png', white)
+value = main(indir, gtdir, outdir, True)
