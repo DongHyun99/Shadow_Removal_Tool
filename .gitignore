@@ -2,6 +2,7 @@ data/
 venv/
 result/
 save/
+hist_data/
 
 mask.zip
 shadow.zip

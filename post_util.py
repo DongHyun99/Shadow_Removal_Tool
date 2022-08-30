@@ -2,6 +2,8 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
+from skimage.exposure import match_histograms
+
 def hist(img, mask = None, ratio = [0,256]):
 
     hist = cv2.calcHist(img, [0], mask, [256], ratio)

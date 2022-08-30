@@ -371,7 +371,7 @@ class Interact(QMainWindow) :
         
     def erodeFunc(self):
         kernel = np.ones((3,3), np.uint8)
-        self.maskImage = cv2.erode(self.maskImage, kernel, self.dilateErodeIterationsSlider.value())
+        self.maskImage = cv2.erode(self.maskImage, kernel, iterations=self.dilateErodeIterationsSlider.value())
         print(f"Erode ...")
         mask = None
         predict = None
