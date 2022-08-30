@@ -15,7 +15,6 @@ def _match_cumulative_cdf(source, template, mask, channel=1):
     
     source_size = source.size - len(mask[mask==0]) * channel
     template_size = template.size - len(mask[mask!=0]) * channel
-    
     # calculate normalized quantiles for each array
     src_quantiles = np.cumsum(src_counts) / source_size
     tmpl_quantiles = np.cumsum(tmpl_counts) / template_size
@@ -75,8 +74,13 @@ def masked_histogram_matching(image, reference, mask, multichannel=False):
     
     return matched
 
-img = cv2.imread(os.path.join('save', 'Masked-Histogram Maching result', '3_2.png'))
-mask = cv2.imread(os.path.join('save', 'Masked-Histogram Maching result', '3_mask.png'), cv2.IMREAD_GRAYSCALE)
+img = cv2.imread(os.path.join('save', 'Masked-Histogram Maching result', '2_2.png'))
+mask = cv2.imread(os.path.join('save', 'Masked-Histogram Maching result', '2_mask.png'), cv2.IMREAD_GRAYSCALE)
+
+#img = cv2.imread(os.path.join('hist_data', '26-11_shadow.png'))
+#mask = cv2.imread(os.path.join('hist_data', '26-11_mask.png'), cv2.IMREAD_GRAYSCALE)
+
+# img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
 if img is not None and mask is not None:
     print('img & mask True')
@@ -89,6 +93,11 @@ mask = np.expand_dims(mask, axis=2)
 masked = mask // 255 * img
 none_masked = (255-mask) // 255 * img
 
-masked = masked_histogram_matching(masked, none_masked, mask, multichannel=False)
-img = mask // 255 * masked + none_masked
-cv2.imwrite('post-processing.png', img)
+mhm = masked_histogram_matching(masked, none_masked, mask)#, multichannel=True)
+#mhm2 = masked_histogram_matching(masked, none_masked, mask)#, multichannel=True)
+#mhm[:,:,2] = mhm2[:,:,2]
+
+img = mask // 255 * mhm + none_masked
+# img = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+
+cv2.imwrite('post-processing.png', img)#[:,:,2])
