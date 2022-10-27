@@ -44,7 +44,7 @@ class Batch(QMainWindow):
         self.maskImageList = []
         self.GTImageList = []
         self.num = 1
-        self.ip = 'http://129.254.81.18:50000/'
+        self.ip = 'http://203.249.22.163:50000/'
         self.maskColor = (255, 255, 180)
         self.ax = None
         

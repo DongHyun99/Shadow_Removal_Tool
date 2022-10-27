@@ -46,7 +46,7 @@ class Interact(QMainWindow) :
         self.num = 1
         self.originalImage = {}
         # self.ip = 'http://203.249.22.163:50000/'
-        self.ip = 'http://129.254.81.18:50000/'
+        self.ip = 'http://203.249.22.163:50000/'
         self.maskColor = (255, 255, 180)
         self.segmentColor = (255, 180, 180)
         self.brushColor = '#2ca02c'
