@@ -1,5 +1,4 @@
-opencv-python==4.3.0.38
-opencv-python-headless==4.3.0.38
+opencv-python
 pillow
 matplotlib
 mpl_interactions

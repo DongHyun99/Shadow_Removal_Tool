@@ -1,14 +1,21 @@
-import sys
-from PyQt5.QtWidgets import *
-from PyQt5 import uic
-
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import sys
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from PyQt5 import uic
+from PyQt5.QtWidgets import *
+
 
 class ShadowRemovalPopup(QDialog):
+    """_summary_
+
+    Args:
+        QDialog (QDialog): _description_
+    """
     def __init__(self):
+        """UI에서 
+        """
         super().__init__()
         self.ui = uic.loadUi('UI/ShadowRemovalPopup.ui', self)
         self.setWindowTitle('ShadowRemoval Popup')
@@ -22,7 +29,8 @@ class ShadowRemovalPopup(QDialog):
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.shadowRemovalArea.addWidget(self.toolbar)
         self.canvas.flush_events()
-        
+
+     
 class PredictPopup(QDialog):
     def __init__(self):
         super().__init__()
