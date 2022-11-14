@@ -1,6 +1,7 @@
 /data
 /result
 venv/
+venv2/
 
 # Detection Models pth
 model/detection_models/MTMT/iter_10000.pth

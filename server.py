@@ -1,34 +1,44 @@
-import zipfile
-from urllib import response
-from flask import Flask, request, jsonify
-import os
-import json
-import glob
-import cv2
+# -*- coding: utf-8 -*-
+
+import argparse
 import base64
-import numpy as np
 from distutils import util
 import glob
-import argparse
+import json
+import os
 import shutil
+from urllib import response
+import zipfile
 
-from detection import MTMT, MTMT_patch, SynShadow
-from utils import pad_img_to_modulo
-from mypredict import predict, predictWithDir
+import cv2
+from flask import Flask, request, jsonify
+import numpy as np
+
 from calc_rmse_eval import main
+from detection import MTMT, MTMT_patch, SynShadow
+from mypredict import predict, predictWithDir
+from utils import pad_img_to_modulo
 
-# CUDA_VISIBLE_DEVICES=0 python3 server.py
-
+# ip:port 번호
 rest_port = 50000
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--use', type=bool, default=False)
 opt = parser.parse_args()
-
 app = Flask(__name__)
 
 @app.route('/modelList', methods=['GET'])
+
+
 def model_list():
+    """detection model과 removal model의 종류를 디렉토리에서 읽어와 json 형태로 변환해 Rest-Api
+    형태로 response함
+    
+    Args:
+
+    Returns:
+        js(string): detection model과 removal model의 list를 받아와 json 형태의 string으로 반환
+    """
     
     # client가 새로 접속하면 (Tool을 시작하면) 이전에 사용했던 데이터 디렉토리 삭제
     ipData = os.path.join('data', request.remote_addr)
@@ -38,7 +48,6 @@ def model_list():
     # detection_model과 removal_model의 list를 json 형태로 response
     detection_model = list(filter(os.path.isdir,glob.glob('model/detection_models/*')))
     detection_model = list(map(lambda m : m.split('/')[-1], detection_model))
-    
     removal_model = list(filter(os.path.isdir,glob.glob('model/removal_models/*')))
     removal_model = list(map(lambda m : m.split('/')[-1], removal_model))
     
@@ -47,7 +56,15 @@ def model_list():
     return jsonify(js)
 
 @app.route('/predict', methods=['POST'])
+
+
 def prediction():
+    """batch mode, interactive mode에 대한 shadow detection, removal, evaluation을 진행한 뒤 값을
+    Rest-Api 형태로 response 함. mode, detection 여부, removal 여부 등을 request를 통해 받아옴
+
+    Returns:
+        js(string): image는 base64로 인코딩하고, evaluation 한 값을 포함한 json 형태의 string을 반환
+    """
     
     # 각 ip별 디렉토리 할당
     shadow_dir = os.path.join('data', request.remote_addr, 'shadow')
@@ -56,12 +73,14 @@ def prediction():
     predicted_dir = os.path.join('data', request.remote_addr, 'result', 'predicted')
     GT_dir = os.path.join('data', request.remote_addr, 'GT')
     
+    # 디렉토리 생성
     os.makedirs(shadow_dir, exist_ok=True)
     os.makedirs(mask_dir, exist_ok=True)
     os.makedirs(inpainted_dir, exist_ok=True)
     os.makedirs(predicted_dir, exist_ok=True)
     os.makedirs(GT_dir, exist_ok=True)
     
+    # detection & removal model list
     removal_model_dir = 'model/removal_models/'
     detection_model_dir = 'model/detection_models/'
     
@@ -77,6 +96,7 @@ def prediction():
     GTImage = request.form['GTImage']
     dilateValue = request.form['dilateValue']
     
+    # result 값을 None으로 초기화
     predictImage, inpaintingImage, perfValue = None, None, None
     
     # Batch Mode
@@ -84,19 +104,22 @@ def prediction():
         
         print('Batch Mode Start')
         
+        # base64로 인코딩 된 shadow image를 디코딩한 뒤 shadow_dir 디렉토리에 압축을 품
+        shadowImageZip = base64.b64decode(shadowImage)
+        
+        with open(os.path.join('data',request.remote_addr,'shadow.zip'), 'wb') as f:
+            f.write(shadowImageZip)
+            
+        shadowImageZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'shadow.zip'))
+        for file in shadowImageZip.namelist():
+            shadowImageZip.extract(file, shadow_dir)
+            
+        # shadow detection 시 
         if detection:
-            shadowImageZip = base64.b64decode(shadowImage)
-            
-            with open(os.path.join('data',request.remote_addr,'shadow.zip'), 'wb') as f:
-                f.write(shadowImageZip)
-            
-            shadowImageZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'shadow.zip'))
-            
-            for file in shadowImageZip.namelist():
-                shadowImageZip.extract(file, shadow_dir)
                 
             shadowImages = os.listdir(shadow_dir)
             
+            # detection model로 MTMT를 선택시 MTMT 메소드를 통해 그림자 검출을 진행
             if detectionModel == 'MTMT':
                 print('MTMT')
                 maskImages = MTMT(detection_model_dir, detectionModel, shadow_dir, mask_dir)
@@ -104,67 +127,38 @@ def prediction():
                     maskIm = np.array(np.where(maskIm > 10, 255, 0), np.uint8)
                     cv2.imwrite(os.path.join(mask_dir, shadow.replace('/shadow/', '/mask/')), maskIm)
         
+        # detection을 하지 않는 경우 주어진 shadow mask를 사용함
         else:
-            shadowImageZip = base64.b64decode(shadowImage)
-            
-            with open(os.path.join('data',request.remote_addr,'shadow.zip'), 'wb') as f:
-                f.write(shadowImageZip)
-            
-            shadowImageZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'shadow.zip'))
-            
-            for file in shadowImageZip.namelist():
-                shadowImageZip.extract(file, shadow_dir)
             
             maskImageZip = base64.b64decode(maskImage)
-            
+
             with open(os.path.join('data',request.remote_addr,'mask.zip'), 'wb') as f:
                 f.write(maskImageZip)
             
             maskImageZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'mask.zip'))
-            
             for file in maskImageZip.namelist():
                 maskImageZip.extract(file, mask_dir)
                 
             maskImages = glob.glob(mask_dir+'/*.png')
             
+            # dilate 값이 주어진 경우 mask를 읽어와 dilation 후 다시 저장
             if dilateValue != 'None':
                 print('dilate')
                 for mask in maskImages:
                     maskim = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
                 
                     # dilate 값이 있는 경우 mask를 수정해줌
-                
                     kernel = np.ones((3,3), np.uint8)
                     maskim = cv2.dilate(maskim, kernel, iterations=int(dilateValue))
                     cv2.imwrite(mask, maskim)
-                
-        if removal:
-            
-            # perf가 True일 경우 RMSE performance를 계산하여 같이 반환
-            if perf:
-                print('RMSE calculate')
-                GTZip = base64.b64decode(GTImage)
-            
-                with open(os.path.join('data',request.remote_addr,'GT.zip'), 'wb') as f:
-                    f.write(GTZip)
-
-                GTZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'GT.zip'))
-
-                for file in GTZip.namelist():
-                    GTZip.extract(file, GT_dir)
-
-                inpainted_perfValue = main(mask_dir, GT_dir, inpainted_dir, True)
-                predicted_perfValue = main(mask_dir, GT_dir, predicted_dir, True)
-                
-                perfValue = {'inpainted': inpainted_perfValue, 'predicted': predicted_perfValue}
-            
-            path = os.path.join(removal_model_dir, removalModel)
-            add_dir = os.path.join('data', request.remote_addr)
-            predictWithDir(add_dir, None, path, False, '.png', opt)
-            
+        
+        # Shadow Removal 시        
+        path = os.path.join(removal_model_dir, removalModel)
+        add_dir = os.path.join('data', request.remote_addr)
+        predictWithDir(add_dir, None, path, False, '.png', opt)  
         dir = os.getcwd()
         
-        # mask
+        # mask 압축 및 decoding
         maskList = os.listdir(mask_dir)
         os.chdir(mask_dir)
         maskZip = zipfile.ZipFile(os.path.join(dir, 'data', request.remote_addr, 'mask.zip'), 'w')
@@ -176,7 +170,7 @@ def prediction():
             bytes = f.read()
             maskZip = base64.b64encode(bytes).decode('UTF-8')
             
-        # predict
+        # predict 압축 및 decoding
         predictList = os.listdir(predicted_dir)
         os.chdir(predicted_dir)
         predictZip = zipfile.ZipFile(os.path.join(dir, 'data', request.remote_addr, 'predicted.zip'), 'w')
@@ -188,7 +182,7 @@ def prediction():
             bytes = f.read()
             predictZip = base64.b64encode(bytes).decode('UTF-8')
             
-        # inpaint
+        # inpaint 압축 및 decoding
         inpaintList = os.listdir(inpainted_dir)
         os.chdir(inpainted_dir)
         inpaintZip = zipfile.ZipFile(os.path.join(dir, 'data', request.remote_addr, 'inpainted.zip'), 'w')
@@ -199,7 +193,26 @@ def prediction():
         with open(os.path.join('data', request.remote_addr, 'inpainted.zip'), "rb") as f:
             bytes = f.read()
             inpaintZip = base64.b64encode(bytes).decode('UTF-8')
+        
+        # perf가 True일 경우 GT shadow-free image를 읽어와 RMSE performance를 계산하여 같이 반환
+        if perf:
+            print('RMSE calculate')
+            GTZip = base64.b64decode(GTImage)
+        
+            with open(os.path.join('data',request.remote_addr,'GT.zip'), 'wb') as f:
+                f.write(GTZip)
+
+            GTZip = zipfile.ZipFile(os.path.join('data',request.remote_addr,'GT.zip'))
+            for file in GTZip.namelist():
+                GTZip.extract(file, GT_dir)
+
+            #RMSE 계산
+            inpainted_perfValue = main(mask_dir, GT_dir, inpainted_dir, True)
+            predicted_perfValue = main(mask_dir, GT_dir, predicted_dir, True)
             
+            perfValue = {'inpainted': inpainted_perfValue, 'predicted': predicted_perfValue}
+        
+        # response 정의 및 반환
         response = {'predictImage': predictZip, 'inpaintingImage': inpaintZip, 'maskImage': maskZip, 'perf': perfValue}
         js = json.dumps(response, indent=4)
         return jsonify(js)
@@ -212,6 +225,7 @@ def prediction():
             shadowImage = cv2.imdecode(np.frombuffer(base64.b64decode(shadowImage), dtype=np.uint8), flags=1)
             cv2.imwrite(os.path.join(shadow_dir, 'sample.png'), shadowImage)
             
+            # MTMT / MTMT_patch / SynShadow 중 선택하여 mask 검출
             if detectionModel == 'MTMT':
                 print('MTMT')
                 maskImages = MTMT(detection_model_dir, detectionModel, shadow_dir, mask_dir)
@@ -238,6 +252,7 @@ def prediction():
             cv2.imwrite(os.path.join(mask_dir, 'sample.png'), maskImage)
             mask = maskImage.transpose([2,0,1])[0]
             
+            # dilate 값이 주어진 경우 mask를 읽어와 dilation 후 다시 저장
             if dilateValue != 'None':
                 kernel = np.ones((3,3), np.uint8)
                 mask = cv2.dilate(mask, kernel, iterations=int(dilateValue))

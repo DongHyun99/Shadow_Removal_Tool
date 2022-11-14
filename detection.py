@@ -1,19 +1,38 @@
-import os
-import torch
+# -*- coding: utf-8 -*-
+
+import cv2
+import glob
 import numpy as np
-# from medpy import metric
+import os
+from PIL import Image
 import torch
 from torch.utils.data import DataLoader
+from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 from tqdm import tqdm
-from PIL import Image
-from torchvision import transforms
-import os
-
-from model.detection_models.MTMT.MTMT import build_model
 from utils import crf_refine
 
+from model.detection_models.MTMT.MTMT import build_model
+from model.detection_models.MTMT_patch.crop import crop
+from model.detection_models.MTMT_patch.merge import merge
+from model.detection_models.SynShadow.data.demo_dataset import DemoDataset
+from model.detection_models.SynShadow.options.test_options import TestOptions
+from model.detection_models.SynShadow.models.detect_model import DetectModel
+
+
 def MTMT(model_path, model_name, img_path ='data/shadow/', save_path='data/mask/'):
+    """MTMT를 통해 mask를 검출하여 반환함
+
+    Args:
+        model_path (str): MTMT model 위치
+        model_name (str): MTMT model 위치
+        img_path (str, optional): shadow image directory path. Defaults to 'data/shadow/'.
+        save_path (str, optional): 검출된 mask의 save path. Defaults to 'data/mask/'.
+
+    Returns:
+        predict(list): 검출된 마스크를 list 형태로 만들어 return
+    """
+    
     snapshot_path = os.path.join(model_path, model_name, 'iter_10000.pth')
     image_path = img_path
     num_classes = 1
@@ -32,7 +51,18 @@ def MTMT(model_path, model_name, img_path ='data/shadow/', save_path='data/mask/
     return predict
 
 
-def test_all_case(net, image_list, num_classes=1, save_result=True, test_save_path=None, trans_scale=416, GT_access=True):
+def test_all_case(net, image_list, num_classes=1, trans_scale=416):
+    """MTMT의 dataset과 transforms를 정의하여 mask를 검출하는 method
+
+    Args:
+        net (torch.nn.module): resnext101 기반 MTMT model
+        image_list (list): shadow image, gt image 쌍의 tupple들로 이루어진 list
+        num_classes (int, optional): resnext의 output class 개수. Defaults to 1.
+        trans_scale (int, optional): resize할 크기 정의. Defaults to 416.
+
+    Returns:
+        predictions(list): 검출된 마스크를 list 형태로 만들어 return
+    """
     normal = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) # SBU
     # normal = transforms.Normalize([0.517, 0.514, 0.492], [0.186, 0.173, 0.181]) # ISTD
     # normal = transforms.Normalize([0.723, 0.616, 0.569], [0.169, 0.177, 0.197]) # ISIC2017
@@ -74,14 +104,24 @@ def test_all_case(net, image_list, num_classes=1, save_result=True, test_save_pa
 
     return predictions
 
-from model.detection_models.MTMT_patch.crop import crop
-from model.detection_models.MTMT_patch.merge import merge
-import glob
-import cv2
-
 def MTMT_patch(model_path, model_name, img_path, save_path, 
                img_x_size, img_y_size, patch_x_size=640, patch_y_size=480, stride=0):
-    
+    """MTMT를 patch 단위로 쪼개서 각각에 대한 그림자를 검출한 뒤 합치는 메소드
+
+    Args:
+        model_path (str): MTMT model 위치.
+        model_name (str): MTMT model 위치.
+        img_path (str, optional): shadow image directory path. 
+        save_path (str, optional): 검출된 mask의 save path .
+        img_x_size (int): 입력 이미지의 x 크기.
+        img_y_size (int): 입력 이미지의 y 크기.
+        patch_x_size (int, optional): patch의 x 크기. Defaults to 640.
+        patch_y_size (int, optional): patch의 y 크기. Defaults to 480.
+        stride (int, optional): patch의 stride. Defaults to 0.
+
+    Returns:
+        maskImages(np.array): 각 patch에 대한 merge를 수행한 뒤 나온 그림자 검출 이미지를 반환.
+    """
     
     shadowPatchPath = os.path.join(img_path, 'patch')
     maskPatchPath = os.path.join(save_path, 'patch')
@@ -113,11 +153,19 @@ def MTMT_patch(model_path, model_name, img_path, save_path,
     
     return maskImages
 
-from model.detection_models.SynShadow.options.test_options import TestOptions
-from model.detection_models.SynShadow.models.detect_model import DetectModel
-from model.detection_models.SynShadow.data.demo_dataset import DemoDataset
 
 def SynShadow(model_path, img_path, save_path):
+    """Synshadow로 augmentation한 DSDNet++ detection model을 사용해 그림자를 검출.
+
+    Args:
+        model_path (str): 모델의 위치.
+        img_path (str): shadow 이미지의 위치.
+        save_path (str): save 디렉토리의 위치.
+
+    Returns:
+        predict(list): 결과 그림자 검출 이미지를 list 형태로 만들어 return.
+    """
+    
     predict = []
     
     opt = TestOptions().parse()

@@ -1,9 +1,26 @@
+# -*- coding: utf-8 -*-
+
 import cv2
 import glob
 import numpy as np
 import os
 
+
 def merge(img_x_size, img_y_size, img_path, save_path, patch_x_size=640, patch_y_size=480, stride=0):
+    """crop을 통해 나눠진 patch를 다시 붙이는 메소드.
+
+    Args:
+        img_x_size (int): 원본 이미지의 x축 크기.
+        img_y_size (int): 원본 이미지의 y축 크기.
+        img_path (str): 이미지의 디렉토리 위치.
+        save_path (str): 저장 디렉토리 위치.
+        patch_x_size (int, optional):치 이미지의 x축 크기. Defaults to 640.
+        patch_y_size (int, optional): 패치 이미지의 y축 크기. Defaults to 480.
+        stride (int, optional): patch끼리 겹치는 stride의 크기. Defaults to 0.
+        
+    Returns:
+       img(numpy.array): 합쳐진 이미지
+    """
 
     original_input = img_path
     
