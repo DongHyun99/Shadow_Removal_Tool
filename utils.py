@@ -1,16 +1,27 @@
-import sys
+# -*- coding: utf-8 -*-
+
+from PIL import ImageColor
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
-from PIL import ImageColor
 
-class Masking(QDialog) :
-    def __init__(self) :
+
+class Masking(QDialog):
+    """Masking setting UI class.
+    """
+    
+    def __init__(self):
+        """masking setting 기본 설정 ui
+        """
+        
         super().__init__()
         self.ui = uic.loadUi('UI/Masking.ui', self)
         self.setWindowTitle('Masking Setting')
+        
+        # 기본 색상
         self.maskCol = (255, 255, 180)
         self.segmentCol = (255, 180, 180)
         
+        # 버튼 클릭 이벤트
         self.maskColorButton.clicked.connect(self.maskColorFunc)
         self.boundaryColorButton.clicked.connect(self.segmentColorFunc)
         self.segmentationCheckbox.clicked.connect(self.segmentationChecked)
@@ -19,6 +30,7 @@ class Masking(QDialog) :
         self.quickShift.clicked.connect(self.quickShiftToggle)
         self.waterShed.clicked.connect(self.waterShedToggle)
         
+        # slic을 기본으로 사용
         self.slic.setEnabled(False)
         self.felzenswalb.setEnabled(False)
         self.quickShift.setEnabled(False)
@@ -34,6 +46,9 @@ class Masking(QDialog) :
         
 
     def maskColorFunc(self):
+        """QColorDialog를 통해 색상을 가져와 적용
+        """
+        
         self.maskCol = QColorDialog.getColor().name()
         self.maskCol = ImageColor.getcolor(self.maskCol, 'RGB')
         self.maskColorButton.setStyleSheet(
@@ -41,6 +56,8 @@ class Masking(QDialog) :
         )
         
     def segmentColorFunc(self):
+        """QColorDialog를 통해 색상을 가져와 적용
+        """
         self.segmentCol = QColorDialog.getColor().name()
         self.segmentCol = ImageColor.getcolor(self.segmentCol, 'RGB')
         self.boundaryColorButton.setStyleSheet(
@@ -48,6 +65,9 @@ class Masking(QDialog) :
         )
         
     def segmentationChecked(self):
+        """segmentation checkbox가 check되어있을 경우 segmentation 기능 활성화
+        """
+        
         if self.segmentationCheckbox.isChecked():
             self.slic.setEnabled(True)
             self.felzenswalb.setEnabled(True)
@@ -61,6 +81,9 @@ class Masking(QDialog) :
             self.waterShed.setEnabled(False)
             
     def slicToggle(self):
+        """slic 체크시 다른 알고리즘 체크 해제
+        """
+        
         if self.slic.isChecked():
             if self.felzenswalb.isChecked():
                 self.felzenswalb.toggle()
@@ -73,6 +96,9 @@ class Masking(QDialog) :
             self.slic.toggle()
             
     def felzenswalbToggle(self):
+        """felzenswalb 체크시 다른 알고리즘 체크 해제
+        """
+        
         if self.felzenswalb.isChecked():
             if self.slic.isChecked():
                 self.slic.toggle()
@@ -85,6 +111,9 @@ class Masking(QDialog) :
             self.slic.toggle()
             
     def quickShiftToggle(self):
+        """quickShift 체크시 다른 알고리즘 체크 해제
+        """
+        
         if self.quickShift.isChecked():
             if self.felzenswalb.isChecked():
                 self.felzenswalb.toggle()
@@ -97,6 +126,9 @@ class Masking(QDialog) :
             self.slic.toggle()
         
     def waterShedToggle(self):
+        """waterShed 체크시 다른 알고리즘 체크 해제
+        """        
+        
         if self.waterShed.isChecked():
             if self.felzenswalb.isChecked():
                 self.felzenswalb.toggle()
@@ -107,9 +139,16 @@ class Masking(QDialog) :
                 
         elif not self.felzenswalb.isChecked() and not self.quickShift.isChecked() and not self.slic.isChecked():
             self.slic.toggle()
+
+
+class Visualization(QDialog):
+    """ Visualization Setting UI Class.
+    """
+    
+    def __init__(self):
+        """visualization setting 기본 설정 ui
+        """
         
-class Visualization(QDialog) :
-    def __init__(self) :
         super().__init__()
         self.ui = uic.loadUi('UI/Visualization.ui', self)
         self.setWindowTitle('Visualization Setting')
@@ -120,6 +159,9 @@ class Visualization(QDialog) :
         
         
     def shadowRemovalToggle(self):
+        """그림자 제거, 그림자 제거 및 non-shadow 부분 덮어쓰기, edge 부분 그림자 제거 모드중 선택
+        """
+        
         if self.shadowRemovalCheckbox.isChecked():
             if self.predictAndInpaintingCheckbox.isChecked():
                 self.predictAndInpaintingCheckbox.toggle()
@@ -130,6 +172,9 @@ class Visualization(QDialog) :
             self.shadowRemovalCheckbox.toggle()
                          
     def removalAndInpaintingToggle(self):
+        """그림자 제거, 그림자 제거 및 non-shadow 부분 덮어쓰기, edge 부분 그림자 제거 모드중 선택
+        """
+        
         if self.predictAndInpaintingCheckbox.isChecked():
             if self.shadowRemovalCheckbox.isChecked():
                 self.shadowRemovalCheckbox.toggle()
@@ -140,6 +185,9 @@ class Visualization(QDialog) :
             self.shadowRemovalCheckbox.toggle()
                 
     def edgeDetectionToggle(self):
+        """그림자 제거, 그림자 제거 및 non-shadow 부분 덮어쓰기, edge 부분 그림자 제거 모드중 선택
+        """
+        
         if self.edgeDetectionCheckbox.isChecked():
             if self.shadowRemovalCheckbox.isChecked():
                 self.shadowRemovalCheckbox.toggle()
@@ -150,7 +198,13 @@ class Visualization(QDialog) :
             self.shadowRemovalCheckbox.toggle()
             
 class Server(QDialog) :
+    """ 서버 setting UI Class.
+    """
+    
     def __init__(self) :
+        """server setting 기본 설정 ui
+        """
+        
         super().__init__()
         self.ui = uic.loadUi('UI/Server.ui', self)
         self.setWindowTitle('Server Setting')

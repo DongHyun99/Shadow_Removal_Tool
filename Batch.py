@@ -1,25 +1,34 @@
-import os
-import sys
-from PyQt5.QtWidgets import *
-from PyQt5 import uic
-from PyQt5.QtCore import Qt
-import json
-import requests
-import cv2
-import numpy as np
-import glob
-import zipfile
-import base64
-import shutil
-from distutils.dir_util import copy_tree
+# -*- coding: utf-8 -*-
 
+import base64
+import json
+import os
+import shutil
+import sys
+import zipfile
+
+import cv2
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from mpl_interactions import zoom_factory
+import numpy as np
+import requests
+from PyQt5.QtWidgets import *
+from PyQt5 import uic
+from PyQt5.QtCore import Qt
+
+from distutils.dir_util import copy_tree
+
 
 class Batch(QMainWindow):
+    """Batch Mode pyqt client class
+    """
+    
     def __init__(self) :
+        """초기설정
+        """
+        
         super().__init__()
         self.ui = uic.loadUi('UI/batch.ui', self)
         self.setWindowTitle('ShadowRemoval (Batch mode) Demo')
@@ -44,7 +53,7 @@ class Batch(QMainWindow):
         self.maskImageList = []
         self.GTImageList = []
         self.num = 1
-        self.ip = 'http://203.249.22.163:50000/'
+        self.ip = 'http://203.249.22.97:50000/'
         self.maskColor = (255, 255, 180)
         self.ax = None
         
@@ -58,6 +67,7 @@ class Batch(QMainWindow):
         self.maskImageCheckbox.toggle()
         self.predictedRadio.toggle()
         
+        # 각 이미지별 figure & canvas
         self.shadowFig = plt.Figure()
         self.maskFig = plt.Figure()
         self.GTFig = plt.Figure()
@@ -99,24 +109,40 @@ class Batch(QMainWindow):
         self.resultCanvas.flush_events()
     
     def menuBar(self):
+        """navigation bar에 각 action을 연결
+        """
+        
         self.actionInteractive.triggered.connect(self.change_ui)
         
     def selectDirectory(self):
+        """directory select button click을 각 action을 연결 
+        """
+        
         self.shadowImageButton.clicked.connect(self.selectShadow)
         self.maskImageButton.clicked.connect(self.selectMask)
         self.GTImageButton.clicked.connect(self.selectGT)
         
     def checkbox(self):
+        """checkbox toggle에 각 action을 연결
+        """
+        
         self.maskImageCheckbox.clicked.connect(self.maskImageToggle)
         self.detectionModelCheckbox.clicked.connect(self.detectionModelToggle)   
         
     def radio(self):
+        """radio click을 event에 연결
+        """
+        
         self.predictedRadio.clicked.connect(self.selectResult)
         self.inpaintedRadio.clicked.connect(self.selectResult)
         self.edgePredictedRadio.clicked.connect(self.selectResult)
         self.edgeInpaintedRadio.clicked.connect(self.selectResult)
                  
     def loadModels(self):
+        """request를 통해 server에서 model list(detection & removal)fmf
+        """
+        
+        # Recall model list
         res = requests.get(self.ip + 'modelList')
         models = json.loads(res.json())
         
@@ -127,6 +153,9 @@ class Batch(QMainWindow):
             self.selectRemovalModel.addItem(model)
             
     def selectButton(self):
+        """button click을 각 action을 연결
+        """
+        
         self.run.clicked.connect(self.shadowRemovalUpload)
         self.Save.clicked.connect(self.saveFunc)
         self.Clear.clicked.connect(self.clearFunc)
@@ -135,6 +164,9 @@ class Batch(QMainWindow):
     # ===================================================================
 
     def selectShadow(self):
+        """QFileDialog를 통해 디렉토리를 지정하고 각 이미지 리스트를 왼쪽 창으로 띄어줌
+        """
+        
         self.shadowImageDir = QFileDialog.getExistingDirectory(self, 'Select shadowImage Directory', './')
         
         if self.shadowImageDir != 'None' and self.shadowImageDir != '':
@@ -149,6 +181,9 @@ class Batch(QMainWindow):
             self.shadowImageSelect.itemClicked.connect(self.showShadow)
         
     def selectMask(self):
+        """QFileDialog를 통해 디렉토리를 지정하고 각 이미지 리스트를 왼쪽 창으로 띄어줌
+        """
+        
         self.maskImageDir = QFileDialog.getExistingDirectory(self, 'Select maskImage Directory', './')
         
         if self.maskImageDir != 'None' and self.maskImageDir != '':
@@ -163,6 +198,9 @@ class Batch(QMainWindow):
             self.maskImageSelect.itemClicked.connect(self.showMask)
             
     def selectGT(self):
+        """QFileDialog를 통해 디렉토리를 지정하고 각 이미지 리스트를 왼쪽 창으로 띄어줌
+        """
+        
         self.GTImageDir = QFileDialog.getExistingDirectory(self, 'Select GTImage Directory', './')
         
         if self.GTImageDir != 'None' and self.GTImageDir != '' and self.GTImageCheckbox.isChecked():
@@ -177,6 +215,9 @@ class Batch(QMainWindow):
             self.GTImageSelect.itemClicked.connect(self.showGT)
             
     def selectResult(self):
+        """완성된 예측 result를 종류별로 살펴볼수 있도록 기능 구현
+        """
+        
         self.resultImageSelect = QListWidget()
         resultList = os.listdir(os.path.join('result', 'predicted'))
         for idx, l in enumerate(resultList):
@@ -196,6 +237,9 @@ class Batch(QMainWindow):
         self.resultImageSelect.itemClicked.connect(self.showResult)
     
     def showShadow(self):
+        """그림자 이미지 리스트에서 선택시 이미지를 시각화 함
+        """
+        
         if self.shadowImageSelect.currentItem().text() is not None:
             name = self.shadowImageSelect.currentItem().text()
             imgDir = os.path.join(self.shadowImageDir, name)
@@ -204,6 +248,9 @@ class Batch(QMainWindow):
             self.setImageFunc()
             
     def showMask(self):
+        """마스크 이미지 리스트에서 선택시 이미지를 시각화 함
+        """
+        
         if self.maskImageSelect.currentItem().text() is not None:
             name = self.maskImageSelect.currentItem().text()
             imgDir = os.path.join(self.maskImageDir, name)
@@ -212,6 +259,9 @@ class Batch(QMainWindow):
             self.setImageFunc()
             
     def showGT(self):
+        """gt 이미지 리스트에서 선택시 이미지를 시각화 함
+        """
+        
         if self.GTImageSelect.currentItem().text() is not None:
             name = self.GTImageSelect.currentItem().text()
             imgDir = os.path.join(self.GTImageDir, name)
@@ -220,6 +270,9 @@ class Batch(QMainWindow):
             self.setImageFunc()
             
     def showResult(self):
+        """result 이미지 리스트에서 선택시 이미지를 시각화 함
+        """
+        
         if self.resultImageSelect.currentItem().text() is not None:
             name = self.resultImageSelect.currentItem().text()
             imgDir = os.path.join(self.resultImageDir, name)
@@ -228,7 +281,9 @@ class Batch(QMainWindow):
             self.setImageFunc()
     
     def maskImageToggle(self):
-        # mask를 이미 가지고 있는 이미지를 사용할지, Detection model을 사용할 지 선택
+        """mask를 이미 가지고 있는 이미지를 사용할지, Detection model을 사용할 지 선택
+        """
+        
         if self.maskImageCheckbox.isChecked():
             if self.detectionModelCheckbox.isChecked():
                 self.detectionModelCheckbox.toggle()
@@ -237,7 +292,9 @@ class Batch(QMainWindow):
                 self.detectionModelCheckbox.toggle()
             
     def detectionModelToggle(self):
-        # mask를 이미 가지고 있는 이미지를 사용할지, Detection model을 사용할 지 선택
+        """mask를 이미 가지고 있는 이미지를 사용할지, Detection model을 사용할 지 선택
+        """
+        
         if self.detectionModelCheckbox.isChecked():
             if self.maskImageCheckbox.isChecked():
                 self.maskImageCheckbox.toggle()
@@ -251,10 +308,11 @@ class Batch(QMainWindow):
             ax.axis('off')
             ax.cla()
             self.maskCanvas.draw()
-           
-    # matplotlib를 통한 이미지 plot 알고리즘    
+            
     def setImageFunc(self):
-        # 크기 설정
+        """matplotlib를 통한 이미지 plot 알고리즘
+        """
+        
         print('set Image')
         
         if self.shadowImage is not None:
@@ -301,11 +359,11 @@ class Batch(QMainWindow):
             disconnect_zoom = zoom_factory(ax)
             self.resultFig.tight_layout()
             self.resultCanvas.draw()
-
-    # def runFunc(self):
-        # if self.shadowImageDir != 'None' and self.maskImageDir != 'None':
             
     def shadowRemovalUpload(self):
+        """이미지 파일들을 zip파일로 압축한 뒤 rest-api 형태로 server에 request
+        """
+        
         removalModel = self.selectRemovalModel.currentText()
         shadowList = os.listdir(self.shadowImageDir)
         dir = os.getcwd()
@@ -401,6 +459,7 @@ class Batch(QMainWindow):
         edgeZip.close()
         
         GTZip = 'None'
+        
         if self.GTImageCheckbox.isChecked():
             GTList = os.listdir(self.GTImageDir)
             os.chdir(self.GTImageDir)
@@ -467,6 +526,8 @@ class Batch(QMainWindow):
             self.perf.setAlignment(Qt.AlignCenter)
         
     def saveFunc(self):
+        """QFileDialog로 디렉토리를 찾아서 위치에 이미지를 저장
+        """
         
         DirOpen = QFileDialog.getExistingDirectory(self, 'Select save Directory', './')
         self.saveDir = DirOpen
@@ -483,13 +544,23 @@ class Batch(QMainWindow):
             os.mkdir('result')
             
     def clearFunc(self):
+        """초기화 및 다시 시작
+        """
+        
         self.Clear = Batch()
         self.Clear.show()
-        self.close()
-            
+        self.close()   
         
-    def extractMaskEdge(self, mask):    # mask [:,:, 1]
-        #mask_double =np.asarry(mask, dtype=np.double)
+    def extractMaskEdge(self, mask):
+        """mask edge 부분을 찾아서 dilation 하는 메소드.
+
+        Args:
+            mask (np.array): mask 이미지 변수
+
+        Returns:
+            mask: edge 부분의 mask 반환.
+        """
+        
         gx, gy = np.gradient(mask)
         
         temp_edge = gy * gy + gx * gx
@@ -505,6 +576,9 @@ class Batch(QMainWindow):
         return mask
         
     def change_ui(self):
+        """Batch 모드 종료 및 Interactive 모드 실행.
+        """
+        
         from Interactive import Interact
         self.interact = Interact()
         self.interact.show()
